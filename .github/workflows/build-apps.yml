@@ -1,3 +1,8 @@
+# Build + release. The pipeline itself lives in the public app-builder kit, so a fix
+# there reaches every app at once — do not inline it here.
+#
+# deploy_path is deliberately empty: this app's Pages site is the legacy main//docs
+# build, so the pipeline publishes the EXE/APK release and leaves Pages alone.
 name: Build portable EXE + Android APK
 
 on:
@@ -5,12 +10,14 @@ on:
     branches: [ main ]
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-
 jobs:
-  build:
+  app:
     uses: drsamonline/app-builder/.github/workflows/build.yml@main
     with:
       app_name: app-organon-reader
       app_src: docs
+      deploy_path: ""
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
