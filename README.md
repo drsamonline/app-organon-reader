@@ -1,6 +1,6 @@
 <p align="center">
   <img src="docs/badges/live.svg" alt="live: online">
-  <img src="docs/badges/tests.svg" alt="tests: 21/21">
+  <img src="docs/badges/tests.svg" alt="tests: 26/26">
   <img src="docs/badges/offline.svg" alt="offline: 0 requests">
   <img src="docs/badges/deps.svg" alt="deps: 0">
   <img src="docs/badges/sections.svg" alt="sections: 255/291">
@@ -12,14 +12,14 @@
 **The Organon of Medicine, sixth edition, in the 1922 Boericke translation — searchable, bookmarkable and readable with the network off.** No account, no server, no telemetry. Open the page and read.
 
 - **App:** <https://drsamonline.github.io/app-organon-reader/>
-- **The text:** *Organon of Medicine*, 6th edition (completed 1842), translated by William Boericke, 1922 — public domain, read from **three** Internet Archive scans of that printing and merged.
+- **The text:** *Organon of Medicine*, 6th edition (completed 1842), translated by William Boericke, 1922 — public domain, read from **three** Internet Archive scans of that printing and merged. Sixth edition only: `tools/extract.py` refuses any scan whose own front matter does not declare the sixth edition in Boericke's translation, so no fifth-edition or differently-translated wording can enter the bundle.
 - **Built with:** `web-kit`'s storage model, and nothing else. No CDN, no build step, no dependencies.
 
 ## What it does
 
 It is a reader, not an interpreter. It presents the text, finds a phrase in it instantly, and keeps your bookmarks and notes on your own device. It does not summarise, advise, or explain Hahnemann.
 
-Search is phrase search over the bundled text. Type `vital force` and every section that contains it is listed, best match first, each with its section number and the line it matched. Open a section and you can bookmark it or write a note; both are stored locally and both come back on the next visit. Under each section number the reader names the scan that section was read from.
+Search is phrase search over the bundled text. Type `vital force` and every section that contains it is listed, best match first, each with its section number and the line it matched. Every section is in the left-hand list — click one, or type a number into the § box to jump. In the text you can walk the book with **Next / Previous**, or the ← and → keys, and the reader steps over a section it does not carry rather than stopping dead at the gap. Open a section and you can bookmark it or write a note; both are stored locally and both come back on the next visit. Under each section number the reader names the scan that section was read from.
 
 ## What it refuses to do
 
@@ -36,13 +36,14 @@ Search is phrase search over the bundled text. Type `vital force` and every sect
 | Storage full or blocked | The bookmark or note is reported as **not saved**, and is never shown as kept; the write is read back to prove it |
 | A corrupt saved file | It is reported, offered back for export, and the text still opens — the bundled text is read-only |
 | No network | Nothing changes. There is nothing to fetch. |
+| A section number the bundle does not carry | It says so and opens the next section it does carry — it never silently shows you the wrong aphorism |
 
 ## Run it
 
 Open `docs/index.html` — that is the whole app. It works from `file://` and from GitHub Pages, because everything it needs sits beside it.
 
 ```
-node test-node.js        # the suite: 21 assertions, no dependencies
+node test-node.js        # the suite: 26 assertions, no dependencies
 python3 scripts/badges.py   # redraw the badges above from the suite's own numbers
 ```
 

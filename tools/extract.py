@@ -26,6 +26,10 @@ SOURCES = [
      "organon.txt", "IA-1842-1922"),
     ("b3135452x_0001", "src/b3135452x_0001.txt", "Wellcome-0001"),
     ("b3135452x_0002", "src/b3135452x_0002.txt", "Wellcome-0002"),
+    # Only scans that declare the SIXTH edition in Boericke's translation are accepted.
+    # The Dudgeon fifth edition and the 1913 "rational art of healing" are a different
+    # translation and are refused by require_sixth_edition() — their wording cannot be
+    # presented as Boericke's.
 ]
 
 # OCR's favourite digit confusions, applied ONLY inside a section mark
@@ -36,6 +40,21 @@ MARK = re.compile(r"[§$S8]\s*\.?\s*([0-9OoQDlIizZASGbTgqJ|!]{1,3})\s*(?:[.,:;�
 FIRST_APH = re.compile(r"restore\s+the\s+sick|sick\s+to\s+health", re.I)
 PAGE = re.compile(r"^\s*(?:\d{1,3}\s+)?(?:TEXT OF THE ORGANON|TRANSLATORS PREFACE|ORGANON OF MEDICINE|"
                   r"CONTENTS|INTRODUCTION)\s*(?:\d{1,3})?\s*$", re.I)
+
+
+def require_sixth_edition(raw, label):
+    """A scan is used ONLY if it says, in its own front matter, that it is the sixth
+    edition in Boericke's translation. Different editions and different translations
+    are never mixed in — their wording is not interchangeable, so a scan that cannot
+    identify itself is refused rather than merged.
+    """
+    head = re.sub(r"\s+", " ", raw[:6000]).upper()
+    ok = ("SIXTH EDITION" in head) and ("BOERicke".upper() in head)
+    if not ok:
+        raise SystemExit(f"refusing scan {label}: its front matter does not declare the "
+                         f"sixth edition in Boericke's translation")
+    i = head.find("SIXTH EDITION")
+    return head[max(0, i - 80):i + 160].strip()
 
 
 def marks(raw):
@@ -127,10 +146,14 @@ def main():
         if not os.path.exists(full):
             print(f"  !! missing source {full} — skipped (recorded in data/README.md)")
             continue
-        raw = open(full, "rb").read()
+        blob = open(full, "rb").read()
+        text = blob.decode("utf-8", "replace")
+        evidence = require_sixth_edition(text, label)      # refuses anything else
         per_source[label] = sections(full)
-        meta.append({"label": label, "identifier": ident, "bytes": len(raw),
-                     "sha256": hashlib.sha256(raw).hexdigest(),
+        meta.append({"label": label, "identifier": ident, "bytes": len(blob),
+                     "sha256": hashlib.sha256(blob).hexdigest(),
+                     "edition": "sixth edition, Boericke translation",
+                     "edition_evidence": evidence,
                      "sections": len(per_source[label])})
         print(f"  {label:14s} {len(per_source[label]):3d} sections from {path}")
 

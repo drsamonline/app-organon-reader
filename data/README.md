@@ -19,6 +19,12 @@ twice.** Three independent scans of the same translation were therefore read and
 | `Wellcome-0001` | `b3135452x_0001` (Wellcome Library, Boericke & Tafel 1922) | 609,973 bytes | 165 |
 | `Wellcome-0002` | `b3135452x_0002` (the same edition, a second copy) | 610,585 bytes | 155 |
 
+All three declare themselves, in their own front matter, as *"SIXTH EDITION, after Hahnemann's
+own written revision for the sixth edition, translated … by William Boericke"* — and
+`tools/extract.py` **refuses any scan that does not**, so a fifth-edition or
+differently-translated scan cannot be merged in even by accident. The evidence string is
+kept in `sections.json` → `scans[].edition_evidence` and in the bundle's `meta.scans`.
+
 Merged, they carry **255 of the book's 291 sections**. Each section in the bundle
 records which scan it came from (`"from"` in `docs/organon-data.js`, and the reader says
 so under the section number), so any line can be checked against the scan it came from.
@@ -53,7 +59,9 @@ it sits at the end of the **previous** section, which runs on until the next rea
 mark. The reader says "this section carries the following text too" nowhere — but the
 section lengths show it, and the count of 255 is honest about the gap.
 
-Sources rejected, with reasons: `in.ernet.dli.2015.31779` (Digital Library of India,
+Sources rejected, with reasons: the Dudgeon fifth edition and the 1913 "rational art of
+healing" — different editions/translations, refused by the edition guard, not merely
+unused; `in.ernet.dli.2015.31779` (Digital Library of India,
 fifth and sixth editions in one volume) — its body OCR yields only a handful of readable
 marks, so it cannot fill a gap it cannot read either; the Dudgeon 5th edition and the
 1913 "rational art of healing" scans — a different translation, so their wording cannot
@@ -64,4 +72,4 @@ be presented as Boericke's.
     # the three OCR files, named as above, then:
     python3 tools/extract.py          # -> sections.json  (255 of 291)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 21 assertions
+    node test-node.js                 # the suite: 26 assertions

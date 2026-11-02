@@ -69,6 +69,28 @@
     return { ok: true, term: term.trim(), results: results };
   }
 
+  /* ---------- moving through the book ---------- */
+  function numbers(index) {
+    return index.rows.map(function (r) { return r.n; });
+  }
+
+  /**
+   * step(index, n, dir) -> the next/previous section that the bundle actually carries.
+   * Gaps are stepped over, not stopped at: from §2 "next" is §4 when §3 was lost.
+   * Returns null at either end of the book.
+   */
+  function step(index, n, dir) {
+    var nums = numbers(index);
+    if (!nums.length) return null;
+    var i = nums.indexOf(n);
+    if (i === -1) {                       // not a carried section: land on the nearest one
+      for (var k = 0; k < nums.length; k++) if (nums[k] > n) return nums[k];
+      return nums[nums.length - 1];
+    }
+    var j = i + (dir < 0 ? -1 : 1);
+    return j >= 0 && j < nums.length ? nums[j] : null;
+  }
+
   /* ---------- what the reader carries, said plainly ---------- */
   function coverage(meta) {
     var missing = (meta && meta.missing) || [];
@@ -170,6 +192,8 @@
     norm: norm,
     createIndex: createIndex,
     search: search,
+    numbers: numbers,
+    step: step,
     coverage: coverage,
     Store: Store,
     empty: empty,

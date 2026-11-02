@@ -100,6 +100,47 @@ t("search is case- and whitespace-insensitive", () => {
   assert.deepStrictEqual(a.results.map(r => r.n), b.results.map(r => r.n));
 });
 
+/* ---------- browsing: the list, and next/previous ---------- */
+t("the section list is the bundle, in order, with no duplicates", () => {
+  const nums = R.numbers(index);
+  assert.strictEqual(nums.length, index.count);
+  for (let i = 1; i < nums.length; i++) assert.ok(nums[i] > nums[i - 1], "list must ascend");
+});
+
+t("next/previous step over a gap instead of stopping at it", () => {
+  const missing = BOOK.meta.missing;
+  assert.ok(missing.length > 0);
+  const gap = missing.find(n => index.byNumber[n - 1] && index.byNumber[n + 1]);
+  assert.ok(gap, "expected at least one gap between two carried sections");
+  assert.strictEqual(R.step(index, gap - 1, 1), gap + 1,
+    "from §" + (gap - 1) + " next must be §" + (gap + 1) + ", not the missing §" + gap);
+  assert.strictEqual(R.step(index, gap + 1, -1), gap - 1, "and back again");
+});
+
+t("the ends of the book are ends: no previous before the first, no next after the last", () => {
+  const nums = R.numbers(index);
+  assert.strictEqual(R.step(index, nums[0], -1), null);
+  assert.strictEqual(R.step(index, nums[nums.length - 1], 1), null);
+});
+
+t("asking for a section that is not carried lands on the nearest one after it", () => {
+  const gap = BOOK.meta.missing.find(n => index.byNumber[n + 1]);
+  assert.strictEqual(R.step(index, gap, 1), gap + 1);
+});
+
+/* ---------- one edition, one translation ---------- */
+t("every scan used declares the SIXTH edition in Boericke's translation", () => {
+  const scans = BOOK.meta.scans || [];
+  assert.ok(scans.length >= 2);
+  for (const s of scans) {
+    assert.ok(/sixth edition/i.test(s.edition), s.label + " must be the sixth edition");
+    assert.ok(/boericke/i.test(s.edition), s.label + " must be Boericke's translation");
+    assert.ok(/SIXTH EDITION/.test((s.edition_evidence || "").toUpperCase()),
+      s.label + " must carry its own front-matter evidence");
+    assert.ok(!/fifth edition/i.test(s.edition), s.label + " must not be a fifth-edition scan");
+  }
+});
+
 /* ---------- the bad-input rule ---------- */
 t("a too-short term says the term was too short, and never 'no matches'", () => {
   for (const bad of ["", " ", "a", "§"]) {
