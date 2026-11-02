@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="20" role="img" aria-label="offline: 0 requests">
+  <title>offline: 0 requests</title>
+  <linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+  <rect width="150" height="20" rx="3" fill="#0f1115"/>
+  <rect x="68" width="82" height="20" fill="#2ea043"/>
+  <rect width="150" height="20" rx="3" fill="url(#s)"/>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+    <text x="34" y="14">offline</text>
+    <text x="109" y="14">0 requests</text>
+  </g>
+</svg>
