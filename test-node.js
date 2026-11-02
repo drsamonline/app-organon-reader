@@ -30,6 +30,18 @@ t("the bundle carries sections, and says how many of the book's 291", () => {
   assert.strictEqual(BOOK.meta.missing.length, 291 - index.count);
 });
 
+t("the bundle is built from more than one scan, and says which scan each section came from", () => {
+  const labels = (BOOK.meta.scans || []).map(s => s.label);
+  assert.ok(labels.length >= 2, "expected several scans, got " + JSON.stringify(labels));
+  for (const s of BOOK.sections) {
+    assert.ok(labels.includes(s.from), "§" + s.n + " has no recorded scan (" + s.from + ")");
+  }
+  // the merge is the whole point: a single scan must not have been enough
+  const best = Math.max(...(BOOK.meta.scans || []).map(s => s.sections));
+  assert.ok(index.count > best,
+    "the merged bundle (" + index.count + ") must beat the best single scan (" + best + ")");
+});
+
 t("every carried section is numbered, ordered and non-empty", () => {
   let prev = 0;
   for (const s of BOOK.sections) {
@@ -50,12 +62,15 @@ t("a missing section is reported, never renumbered", () => {
 
 /* ---------- Done means #1: one-section phrase, returned first ---------- */
 function phraseInExactlyOneSection() {
-  const words = BOOK.sections[3].text.split(/\s+/).filter(w => w.length > 6);
-  for (let i = 0; i + 3 < words.length; i++) {
-    const phrase = words.slice(i, i + 3).join(" ").replace(/[^\w\s]/g, "");
-    if (phrase.length < 12) continue;
-    const hits = BOOK.sections.filter(s => R.norm(s.text).includes(R.norm(phrase)));
-    if (hits.length === 1) return { phrase, n: hits[0].n };
+  // walk a few sections until a three-word phrase that occurs in exactly one is found
+  for (const seed of BOOK.sections.slice(0, 40)) {
+    const words = seed.text.split(/\s+/).filter(w => w.length > 6);
+    for (let i = 0; i + 3 < words.length; i++) {
+      const phrase = words.slice(i, i + 3).join(" ").replace(/[^\w\s]/g, "");
+      if (phrase.length < 12) continue;
+      const hits = BOOK.sections.filter(s => R.norm(s.text).includes(R.norm(phrase)));
+      if (hits.length === 1) return { phrase, n: hits[0].n };
+    }
   }
   throw new Error("no one-section phrase found — the fixture is broken, not the code");
 }
