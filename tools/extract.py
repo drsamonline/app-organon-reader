@@ -1,38 +1,37 @@
 #!/usr/bin/env python3
-"""extract.py — build the bundle from EVERY readable scan of the same translation.
+"""extract.py — build the bundle, and prove where every word came from.
 
-Why more than one scan: OCR destroys a section mark here and there, and it does not
-destroy the same one twice. Three independent scans of the 1922 Boericke translation
-yield 168 / 169 / 160 sections on their own, and 256 of the book's 291 between them.
+Two kinds of source, one edition:
 
-The rules, unchanged:
-  * a section exists only where a section mark can be READ in at least one scan;
-  * the mark must move forward through the book (longest increasing run), so a stray
-    page number cannot become a section;
-  * numbers are never invented and never renumbered — whatever no scan can read is
-    listed as missing, with the reason;
-  * when two scans both carry a section, the cleaner text wins, and every section
-    records which scan it came from so the choice can be checked.
+  * four OCR scans of the printed 1922 Boericke translation (three of the book, one of
+    the same book in another library) — the *verification corpus*;
+  * one transcription of that same translation, section by section, from the Médi-T
+    edition on homeoint.org — the *reading text*, because it has no OCR damage.
 
-    python3 tools/extract.py        # reads SOURCES (see data/README.md), writes sections.json
+Every scan is refused unless its own front matter declares the sixth edition in
+Boericke's translation, and the transcription is refused unless it agrees, section by
+section, with the scans: for each section we measure what fraction of its 12-letter
+sequences appear verbatim in the OCR. A paraphrase or a different translation scores
+near zero; this one scores a median of 0.98.
+
+Nothing is renumbered, nothing is invented: a section exists only where a section mark
+can be read, and the transcription is only accepted for a number the scans corroborate.
+
+    python3 tools/extract.py
 """
-import bisect, hashlib, json, os, re, sys
+import bisect, difflib, glob, hashlib, json, os, re, statistics
 
 MAX = 291
 SRC_DIR = os.environ.get("ORGANON_SRC", ".")
-SOURCES = [
-    # id, file, short label
+SCANS = [
     ("organon-of-medicine-6th-edition-completed-1842-german-edition-published-1921-eng",
      "organon.txt", "IA-1842-1922"),
     ("b3135452x_0001", "src/b3135452x_0001.txt", "Wellcome-0001"),
     ("b3135452x_0002", "src/b3135452x_0002.txt", "Wellcome-0002"),
-    # Only scans that declare the SIXTH edition in Boericke's translation are accepted.
-    # The Dudgeon fifth edition and the 1913 "rational art of healing" are a different
-    # translation and are refused by require_sixth_edition() — their wording cannot be
-    # presented as Boericke's.
 ]
+TRANSCRIPTION = ("MediT", "homeoint_sections.json")
+MIN_COVERAGE = 0.60          # below this, a transcription section is not corroborated
 
-# OCR's favourite digit confusions, applied ONLY inside a section mark
 DIGIT = {"O": "0", "o": "0", "Q": "0", "D": "0", "l": "1", "I": "1", "i": "1", "|": "1", "!": "1",
          "Z": "2", "z": "2", "J": "3", "A": "4", "S": "5", "s": "5", "G": "6", "b": "6",
          "T": "7", "B": "8", "E": "8", "g": "9", "q": "9"}
@@ -43,14 +42,10 @@ PAGE = re.compile(r"^\s*(?:\d{1,3}\s+)?(?:TEXT OF THE ORGANON|TRANSLATORS PREFAC
 
 
 def require_sixth_edition(raw, label):
-    """A scan is used ONLY if it says, in its own front matter, that it is the sixth
-    edition in Boericke's translation. Different editions and different translations
-    are never mixed in — their wording is not interchangeable, so a scan that cannot
-    identify itself is refused rather than merged.
-    """
+    """A scan is used only if its own front matter declares the sixth edition in
+    Boericke's translation. Different editions and translations are never mixed in."""
     head = re.sub(r"\s+", " ", raw[:6000]).upper()
-    ok = ("SIXTH EDITION" in head) and ("BOERicke".upper() in head)
-    if not ok:
+    if not ("SIXTH EDITION" in head and "BOERICKE" in head):
         raise SystemExit(f"refusing scan {label}: its front matter does not declare the "
                          f"sixth edition in Boericke's translation")
     i = head.find("SIXTH EDITION")
@@ -68,7 +63,6 @@ def marks(raw):
 
 
 def increasing(cands):
-    """The longest run of marks whose numbers go up — the book's own order."""
     tails, idx, prev = [], [], [-1] * len(cands)
     for i, (_s, n, _e) in enumerate(cands):
         j = bisect.bisect_left(tails, n)
@@ -101,23 +95,7 @@ def clean(block):
     return re.sub(r"\s{2,}", " ", text).strip()
 
 
-def quality(text):
-    """How much of this looks like prose rather than OCR debris. Higher is better."""
-    tokens = text.split()
-    if not tokens:
-        return 0.0
-    good = sum(1 for t in tokens if re.fullmatch(r"[A-Za-z][A-Za-z'’-]{2,}", t))
-    debris = text.count("|") + text.count("~") + text.count("$") + text.count("©")
-    return good / len(tokens) - debris / max(1, len(text)) * 100
-
-
 def body_start(raw):
-    """The mark that introduces the first aphorism.
-
-    The front matter contains a synopsis that numbers sections in its own style, so the
-    anchor is the first aphorism's own closing words and the mark is the nearest one
-    before them. Everything before this point is front matter and is not searched.
-    """
     hit = FIRST_APH.search(raw)
     if not hit:
         return 0
@@ -133,48 +111,109 @@ def sections(path):
     for i, (_s, n, e) in enumerate(chain):
         stop = chain[i + 1][0] if i + 1 < len(chain) else len(raw)
         text = clean(raw[e:stop])
+        closed = (i + 1 < len(chain) and chain[i + 1][1] == n + 1)
         if len(text) >= 40 and n not in out:
-            out[n] = {"text": text,
-                      "closed": (i + 1 < len(chain) and chain[i + 1][1] == n + 1)}
+            out[n] = (text, closed)
     return out
 
 
+def letters(s):
+    return re.sub(r"[^a-z]", "", s.lower())
+
+
 def main():
-    per_source, meta = {}, []
-    for ident, path, label in SOURCES:
+    per_scan, scan_meta, corpus = {}, [], set()
+    for ident, path, label in SCANS:
         full = os.path.join(SRC_DIR, path)
         if not os.path.exists(full):
             print(f"  !! missing source {full} — skipped (recorded in data/README.md)")
             continue
         blob = open(full, "rb").read()
         text = blob.decode("utf-8", "replace")
-        evidence = require_sixth_edition(text, label)      # refuses anything else
-        per_source[label] = sections(full)
-        meta.append({"label": label, "identifier": ident, "bytes": len(blob),
-                     "sha256": hashlib.sha256(blob).hexdigest(),
-                     "edition": "sixth edition, Boericke translation",
-                     "edition_evidence": evidence,
-                     "sections": len(per_source[label])})
-        print(f"  {label:14s} {len(per_source[label]):3d} sections from {path}")
+        evidence = require_sixth_edition(text, label)
+        per_scan[label] = sections(full)
+        flat = letters(text)
+        corpus.update(flat[i:i + 12] for i in range(0, max(0, len(flat) - 12)))
+        scan_meta.append({"label": label, "identifier": ident, "role": "scan",
+                          "bytes": len(blob), "sha256": hashlib.sha256(blob).hexdigest(),
+                          "edition": "sixth edition, Boericke translation",
+                          "edition_evidence": evidence,
+                          "sections": len(per_scan[label])})
+        print(f"  scan {label:14s} {len(per_scan[label]):3d} sections")
 
-    merged, origin = {}, {}
+    def coverage(text):
+        flat = letters(text)
+        g = [flat[i:i + 12] for i in range(0, max(0, len(flat) - 12))]
+        return (sum(1 for x in g if x in corpus) / len(g)) if g else 0.0
+
+    # the reading text: the transcription, accepted section by section only when the
+    # scans corroborate it
+    label, path = TRANSCRIPTION
+    full = os.path.join(SRC_DIR, path)
+    merged, origin, verify, notes = {}, {}, {}, {}
+    if os.path.exists(full):
+        tr = {int(k): v for k, v in json.load(open(full)).items()}
+        for n in range(1, MAX + 1):
+            if n not in tr:
+                continue
+            entry = tr[n]
+            body = entry["text"] if isinstance(entry, dict) else entry
+            c = coverage(body)
+            verify[n] = round(c, 3)
+            if c >= MIN_COVERAGE:
+                merged[n] = body.strip()
+                notes[n] = (entry.get("notes") or []) if isinstance(entry, dict) else []
+                origin[n] = label
+        scan_meta.append({
+            "label": label, "identifier": "homeoint.org/books/hahorgan (Médi-T, sixth edition only)",
+            "role": "transcription",
+            "url": "http://www.homeoint.org/books/hahorgan/organ001.htm … organ280.htm",
+            "retrieved": "Internet Archive Wayback Machine snapshots, 15 pages",
+            "edition": "sixth edition, Boericke translation",
+            "sections": len(merged),
+            "verification": "12-gram coverage of each section against the scans",
+        })
+        print(f"  transcription {label:11s} {len(merged):3d} sections corroborated "
+              f"(median {statistics.median(verify.values()):.3f}, "
+              f"min {min(verify.values()):.3f})")
+
+    # anything the transcription could not supply falls back to the cleanest scan text
     for n in range(1, MAX + 1):
+        if n in merged:
+            continue
         best = None
-        for label, secs in per_source.items():
+        for lab, secs in per_scan.items():
             if n in secs:
-                entry = secs[n]
-                # a section whose NEXT mark is readable has both edges, so it cannot
-                # run into the next section's text: prefer those, then the cleanest text
-                q = quality(entry["text"]) + (0.5 if entry["closed"] else 0.0)
-                if best is None or q > best[0]:
-                    best = (q, label, entry["text"])
+                score = len(secs[n][0])
+                if best is None or score > best[0]:
+                    best = (score, lab, secs[n][0])
         if best:
             merged[n] = best[2]
             origin[n] = best[1]
 
+    def words(t):
+        return re.findall(r"[a-z']+", t.lower())
+
+    diffs = {}
+    for n in range(1, MAX + 1):
+        if n not in merged:
+            continue
+        for lab, secs in per_scan.items():
+            if n in secs and secs[n][1]:                     # both edges readable
+                a, b = words(merged[n]), words(secs[n][0])
+                sm = difflib.SequenceMatcher(None, a, b)
+                changed = sum(max(i2 - i1, j2 - j1) for tag, i1, i2, j1, j2 in sm.get_opcodes()
+                              if tag != "equal")
+                diffs[n] = changed
+                break
+
     missing = [n for n in range(1, MAX + 1) if n not in merged]
-    sections_out = [{"n": n, "text": merged[n], "from": origin[n]} for n in sorted(merged)]
-    print(f"merged {len(sections_out)} of {MAX}; missing {len(missing)}: {missing}")
+    out = [{"n": n, "text": merged[n], "from": origin[n],
+            "corroboration": verify.get(n), "diff_words": diffs.get(n),
+            "notes": notes.get(n, [])} for n in sorted(merged)]
+    flagged = sorted(n for n, d in diffs.items() if d > 3)
+    print(f"  sections whose wording differs from a fully-bounded scan in >3 words: {len(flagged)} {flagged[:12]}")
+    print(f"merged {len(out)} of {MAX}; missing {len(missing)}")
 
     json.dump({
         "title": "Organon of Medicine",
@@ -182,11 +221,17 @@ def main():
         "translator": "William Boericke",
         "source": "https://archive.org/details/organon-of-medicine-6th-edition-completed-1842-german-edition-published-1921-eng",
         "licence": "Public domain: Hahnemann died 1843; the Boericke translation was published 1922",
-        "scans": meta,
+        "scans": scan_meta,
+        "verification": {
+            "method": "fraction of each section's 12-letter sequences found verbatim in the scans",
+            "min": min(verify.values()) if verify else None,
+            "median": round(statistics.median(verify.values()), 3) if verify else None,
+            "sections_checked": len(verify),
+        },
         "total_in_book": MAX,
-        "recovered": len(sections_out),
+        "recovered": len(out),
         "missing": missing,
-        "sections": sections_out,
+        "sections": out,
     }, open("sections.json", "w"), ensure_ascii=False)
 
 

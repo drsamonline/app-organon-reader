@@ -24,7 +24,11 @@
   function createIndex(sections) {
     if (!Array.isArray(sections)) throw new TypeError("sections must be an array");
     var rows = sections.map(function (s) {
-      return { n: s.n, text: s.text, from: s.from || null, hay: norm(s.text) };
+      return { n: s.n, text: s.text, from: s.from || null,
+               notes: s.notes || [],
+               corroboration: (s.corroboration == null ? null : s.corroboration),
+               diffWords: (s.diffWords == null ? null : s.diffWords),
+               hay: norm(s.text + " " + (s.notes || []).join(" ")) };
     });
     return {
       rows: rows,

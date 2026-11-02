@@ -23,23 +23,35 @@ function t(name, fn) {
 const index = R.createIndex(BOOK.sections);
 
 /* ---------- the bundle is what it says it is ---------- */
-t("the bundle carries sections, and says how many of the book's 291", () => {
-  assert.ok(index.count > 100, "expected a real bundle, got " + index.count);
+t("the bundle carries the whole book, and says so", () => {
   assert.strictEqual(BOOK.meta.total_in_book, 291);
+  assert.strictEqual(index.count, 291, "expected all 291 sections, got " + index.count);
   assert.strictEqual(BOOK.meta.recovered, index.count);
-  assert.strictEqual(BOOK.meta.missing.length, 291 - index.count);
+  assert.deepStrictEqual(BOOK.meta.missing, []);
+  const said = R.coverage(BOOK.meta).sentence;
+  assert.ok(/Every section is present/.test(said), "coverage must say the book is complete: " + said);
 });
 
-t("the bundle is built from more than one scan, and says which scan each section came from", () => {
+t("every section names its source, and the bundle beats the best single scan", () => {
   const labels = (BOOK.meta.scans || []).map(s => s.label);
-  assert.ok(labels.length >= 2, "expected several scans, got " + JSON.stringify(labels));
+  assert.ok(labels.length >= 2, "expected several sources, got " + JSON.stringify(labels));
   for (const s of BOOK.sections) {
-    assert.ok(labels.includes(s.from), "§" + s.n + " has no recorded scan (" + s.from + ")");
+    assert.ok(labels.includes(s.from), "§" + s.n + " has no recorded source (" + s.from + ")");
   }
-  // the merge is the whole point: a single scan must not have been enough
-  const best = Math.max(...(BOOK.meta.scans || []).map(s => s.sections));
+  const best = Math.max(...(BOOK.meta.scans || []).filter(s => s.role === "scan").map(s => s.sections));
   assert.ok(index.count > best,
-    "the merged bundle (" + index.count + ") must beat the best single scan (" + best + ")");
+    "the assembled bundle (" + index.count + ") must beat the best single source (" + best + ")");
+});
+
+t("the transcription is corroborated by the scans, section by section", () => {
+  const v = BOOK.meta.verification;
+  assert.ok(v && typeof v.median === "number", "the bundle must carry a verification figure");
+  assert.ok(v.median >= 0.9, "median corroboration must be high, got " + v.median);
+  assert.ok(v.min >= 0.6, "no section may fall below the acceptance floor, got " + v.min);
+  assert.strictEqual(v.sections_checked, 291);
+  for (const s of BOOK.sections) {
+    assert.ok(s.corroboration >= 0.6, "§" + s.n + " was accepted below the floor (" + s.corroboration + ")");
+  }
 });
 
 t("every carried section is numbered, ordered and non-empty", () => {
@@ -51,13 +63,12 @@ t("every carried section is numbered, ordered and non-empty", () => {
   }
 });
 
-t("a missing section is reported, never renumbered", () => {
-  const missing = BOOK.meta.missing;
-  assert.ok(missing.length > 0, "this OCR does lose marks, so the list must not be empty");
-  for (const n of missing) assert.ok(!index.byNumber[n], "§" + n + " is listed missing but present");
-  const said = R.coverage(BOOK.meta).sentence;
-  assert.ok(/could not be read/.test(said), "the coverage sentence must admit the gap");
-  assert.ok(said.includes("§" + missing[0]), "it must name a missing section, said: " + said);
+t("a gap, if one existed, is named and never renumbered (fixture: a bundle with §7 absent)", () => {
+  const holed = { total_in_book: 291, recovered: 2, missing: [7] };
+  const said = R.coverage(holed).sentence;
+  assert.ok(/could not be read/.test(said), "the coverage sentence must admit a gap: " + said);
+  assert.ok(said.includes("§7"), "it must name the missing section: " + said);
+  assert.ok(said.includes("2 of the book's 291"), "and say how many it does carry: " + said);
 });
 
 /* ---------- Done means #1: one-section phrase, returned first ---------- */
@@ -100,6 +111,21 @@ t("search is case- and whitespace-insensitive", () => {
   assert.deepStrictEqual(a.results.map(r => r.n), b.results.map(r => r.n));
 });
 
+t("the notes printed with a section are kept apart from its text", () => {
+  const one = index.byNumber[1];
+  assert.ok(one, "§1 must be in the bundle");
+  assert.ok(!/His mission is not/.test(one.text), "the footnote must not run into the text");
+  assert.ok(one.notes.length >= 1, "§1 must carry its printed note");
+  assert.ok(/His mission is not/.test(one.notes[0]), "the note must be the note");
+  const withNotes = BOOK.sections.filter(s => s.notes && s.notes.length).length;
+  assert.ok(withNotes > 50, "expected the book's notes, got " + withNotes + " sections with notes");
+});
+
+t("a note is searchable — it is part of what the reader carries", () => {
+  const res = R.search(index, "sick humanity sighs in vain");
+  assert.ok(res.ok && res.results.length >= 1, "a phrase from a printed note must be findable");
+});
+
 /* ---------- browsing: the list, and next/previous ---------- */
 t("the section list is the bundle, in order, with no duplicates", () => {
   const nums = R.numbers(index);
@@ -107,14 +133,10 @@ t("the section list is the bundle, in order, with no duplicates", () => {
   for (let i = 1; i < nums.length; i++) assert.ok(nums[i] > nums[i - 1], "list must ascend");
 });
 
-t("next/previous step over a gap instead of stopping at it", () => {
-  const missing = BOOK.meta.missing;
-  assert.ok(missing.length > 0);
-  const gap = missing.find(n => index.byNumber[n - 1] && index.byNumber[n + 1]);
-  assert.ok(gap, "expected at least one gap between two carried sections");
-  assert.strictEqual(R.step(index, gap - 1, 1), gap + 1,
-    "from §" + (gap - 1) + " next must be §" + (gap + 1) + ", not the missing §" + gap);
-  assert.strictEqual(R.step(index, gap + 1, -1), gap - 1, "and back again");
+t("next/previous step over a gap instead of stopping at it (fixture: §7 absent)", () => {
+  const holed = R.createIndex(BOOK.sections.filter(s => s.n !== 7));
+  assert.strictEqual(R.step(holed, 6, 1), 8, "from §6 next must be §8, not the missing §7");
+  assert.strictEqual(R.step(holed, 8, -1), 6, "and back again");
 });
 
 t("the ends of the book are ends: no previous before the first, no next after the last", () => {
@@ -124,8 +146,8 @@ t("the ends of the book are ends: no previous before the first, no next after th
 });
 
 t("asking for a section that is not carried lands on the nearest one after it", () => {
-  const gap = BOOK.meta.missing.find(n => index.byNumber[n + 1]);
-  assert.strictEqual(R.step(index, gap, 1), gap + 1);
+  const holed = R.createIndex(BOOK.sections.filter(s => s.n !== 7));
+  assert.strictEqual(R.step(holed, 7, 1), 8);
 });
 
 /* ---------- one edition, one translation ---------- */
@@ -135,8 +157,10 @@ t("every scan used declares the SIXTH edition in Boericke's translation", () => 
   for (const s of scans) {
     assert.ok(/sixth edition/i.test(s.edition), s.label + " must be the sixth edition");
     assert.ok(/boericke/i.test(s.edition), s.label + " must be Boericke's translation");
-    assert.ok(/SIXTH EDITION/.test((s.edition_evidence || "").toUpperCase()),
-      s.label + " must carry its own front-matter evidence");
+    if (s.role === "scan") {
+      assert.ok(/SIXTH EDITION/.test((s.edition_evidence || "").toUpperCase()),
+        s.label + " must carry its own front-matter evidence");
+    }
     assert.ok(!/fifth edition/i.test(s.edition), s.label + " must not be a fifth-edition scan");
   }
 });

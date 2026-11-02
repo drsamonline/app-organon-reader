@@ -169,6 +169,19 @@
     });
   }
 
+  function provenance(row) {
+    if (!row.from) return "";
+    var sources = (BOOK.meta.scans || []);
+    var src = sources.filter(function (s) { return s.label === row.from; })[0];
+    var kind = src && src.role === "transcription" ? "transcription" : "scan";
+    var tail = "";
+    if (row.corroboration != null) {
+      tail = " · corroborated against " + sources.filter(function (s) { return s.role === "scan"; }).length +
+        " scans of the same printing (" + Math.round(row.corroboration * 100) + "% of its word-runs found verbatim)";
+    }
+    return '<div class="hint" style="margin:-8px 0 12px">text from the ' + esc(row.from) + " " + kind + tail + '</div>';
+  }
+
   function show(n) {
     var row = index.byNumber[n];
     if (!row) return;
@@ -183,9 +196,12 @@
         '<div class="spacer"></div>' +
         '<button class="ghost" id="next"' + (next ? "" : " disabled") + '>' + (next ? "§" + next : "end") + ' &rarr;</button>' +
       '</div>' +
-      (row.from ? '<div class="hint" style="margin:-8px 0 12px">read from the ' + esc(row.from) +
-        ' scan — one of ' + (BOOK.meta.scans || []).length + ' scans of the same sixth edition</div>' : '') +
+      provenance(row) +
       '<article>' + esc(row.text) + '</article>' +
+      (row.notes && row.notes.length
+        ? '<div class="note" style="font:15px/1.6 Georgia,serif"><label>Notes as printed with this section</label>' +
+          row.notes.map(function (nt) { return '<p style="margin:0 0 .8em">' + esc(nt) + '</p>'; }).join("") + '</div>'
+        : '') +
       '<div class="note"><label>Your note on this section</label>' +
       '<textarea id="nt" rows="3" placeholder="What you want to remember — kept on this device">' +
       esc(state.notes[n] || "") + '</textarea>' +

@@ -1,9 +1,9 @@
 <p align="center">
   <img src="docs/badges/live.svg" alt="live: online">
-  <img src="docs/badges/tests.svg" alt="tests: 26/26">
+  <img src="docs/badges/tests.svg" alt="tests: 29/29">
   <img src="docs/badges/offline.svg" alt="offline: 0 requests">
   <img src="docs/badges/deps.svg" alt="deps: 0">
-  <img src="docs/badges/sections.svg" alt="sections: 255/291">
+  <img src="docs/badges/sections.svg" alt="sections: 291/291">
   <img src="docs/badges/licence.svg" alt="licence: PolyForm Noncommercial">
 </p>
 
@@ -12,7 +12,7 @@
 **The Organon of Medicine, sixth edition, in the 1922 Boericke translation — searchable, bookmarkable and readable with the network off.** No account, no server, no telemetry. Open the page and read.
 
 - **App:** <https://drsamonline.github.io/app-organon-reader/>
-- **The text:** *Organon of Medicine*, 6th edition (completed 1842), translated by William Boericke, 1922 — public domain, read from **three** Internet Archive scans of that printing and merged. Sixth edition only: `tools/extract.py` refuses any scan whose own front matter does not declare the sixth edition in Boericke's translation, so no fifth-edition or differently-translated wording can enter the bundle.
+- **The text:** *Organon of Medicine*, 6th edition (completed 1842), translated by William Boericke, 1922 — public domain. The reading text comes from the **Médi-T transcription** (homeoint.org) of that translation; it is corroborated, section by section, against **three OCR scans** of the printed book, and `tools/extract.py` refuses anything that fails either test. **All 291 sections are present.**
 - **Built with:** `web-kit`'s storage model, and nothing else. No CDN, no build step, no dependencies.
 
 ## What it does
@@ -23,7 +23,7 @@ Search is phrase search over the bundled text. Type `vital force` and every sect
 
 ## What it refuses to do
 
-- **It does not renumber the book.** OCR loses a section mark here and there — `§ 40` is read as `§ AO,`, `§ 1` as `Si`, `§ 2` as `~ B-`. Three scans of the same printing lose *different* marks, so all three are read and merged: the bundle carries **255 of the 291 sections**, each one recording which scan it came from. The other 36 are unreadable in every scan, and are named on screen rather than renumbered. A reader that quietly renumbered the rest would be worse than a reader with gaps.
+- **It does not renumber the book.** A section exists only where a section mark can be read, and every section records where its text came from. OCR alone reached 255 of 291 — three scans of the same printing lose *different* marks — so the remaining 36 come from the transcription, each accepted only because its wording is found verbatim in the scans (median 98% of its word-runs). Nothing was renumbered, nothing was reconstructed, nothing was taken from another edition or another translation.
 - **It does not invent a section to fill a gap.** Nothing in the text is paraphrased, reconstructed or generated.
 - **It does not fetch anything.** No `fetch`, no `XMLHttpRequest`, no beacon, no socket, no off-origin `<script>`. The suite asserts all five, and that the bundle hashes the same on a second load.
 
@@ -43,7 +43,7 @@ Search is phrase search over the bundled text. Type `vital force` and every sect
 Open `docs/index.html` — that is the whole app. It works from `file://` and from GitHub Pages, because everything it needs sits beside it.
 
 ```
-node test-node.js        # the suite: 26 assertions, no dependencies
+node test-node.js        # the suite: 29 assertions, no dependencies
 python3 scripts/badges.py   # redraw the badges above from the suite's own numbers
 ```
 

@@ -1,4 +1,4 @@
-# The bundled text, and its licence
+# The text, its sources, and how each one was checked
 
 | | |
 |---|---|
@@ -7,11 +7,19 @@
 | Licence of the TEXT | Public domain — Hahnemann died 1843; the Boericke translation was published 1922 |
 | Licence of this repo's CODE | PolyForm Noncommercial 1.0.0 |
 
-## Why three scans
+**The bundle now carries all 291 sections.** Two kinds of source make that possible, and
+they check each other.
 
-A single OCR of the 1922 printing loses a section mark here and there — `§ 40` is read
-as `§ AO,`, `§ 1` as `Si`, `§ 2` as `S 2.` or `~ B-`. **It does not lose the same one
-twice.** Three independent scans of the same translation were therefore read and merged:
+## 1. The reading text — a transcription (no OCR damage)
+
+Médi-T's transcription of the sixth edition on homeoint.org, section by section
+(`organ001.htm … organ280.htm`, fifteen pages, retrieved through the Internet Archive
+Wayback Machine). Those pages print **both** editions: where the fifth and sixth differ
+they carry `§ N Fifth Edition` and `§ N Sixth Edition` one after the other, and where they
+agree a bare `§ N`. `tools/parse-homeoint.py` takes the sixth-edition block, takes a bare
+heading (it is the same text in both editions), and **never** takes a fifth-edition block.
+
+## 2. The verification corpus — three OCR scans of the printed book
 
 | scan | Internet Archive item | OCR file | sections on its own |
 |---|---|---|---|
@@ -19,57 +27,48 @@ twice.** Three independent scans of the same translation were therefore read and
 | `Wellcome-0001` | `b3135452x_0001` (Wellcome Library, Boericke & Tafel 1922) | 609,973 bytes | 165 |
 | `Wellcome-0002` | `b3135452x_0002` (the same edition, a second copy) | 610,585 bytes | 155 |
 
-All three declare themselves, in their own front matter, as *"SIXTH EDITION, after Hahnemann's
-own written revision for the sixth edition, translated … by William Boericke"* — and
-`tools/extract.py` **refuses any scan that does not**, so a fifth-edition or
-differently-translated scan cannot be merged in even by accident. The evidence string is
-kept in `sections.json` → `scans[].edition_evidence` and in the bundle's `meta.scans`.
+## How a section earns its place
 
-Merged, they carry **255 of the book's 291 sections**. Each section in the bundle
-records which scan it came from (`"from"` in `docs/organon-data.js`, and the reader says
-so under the section number), so any line can be checked against the scan it came from.
+1. **Edition guard.** A scan is refused unless its own front matter declares the *sixth
+   edition in Boericke's translation* (`require_sixth_edition()`).
+2. **Mark guard.** In a scan, a section exists only where a section mark can actually be
+   read — digits only, OCR's `O→0 / l→1 / S→5 / B→8 / g→9` confusions mapped *inside the
+   mark only* — and only inside a forward-moving run, so a stray page number cannot
+   become a section.
+3. **Corroboration.** For every transcription section, `tools/extract.py` measures the
+   fraction of its 12-letter sequences that appear **verbatim** in the scans. A paraphrase
+   or a different translation scores near zero; this transcription scores **median 0.976,
+   minimum 0.729** across all 291 sections. Anything below 0.60 is refused and the scan's
+   text is used instead.
+4. **Provenance.** Every section carries `from` (`MediT`, or a scan label) and its
+   `corroboration` figure. The reader prints both under the section number, so any line
+   can be traced and checked.
 
-The SHA-256 of every file used is recorded in `sections.json` → `scans`, so the input is
-pinned even though the files themselves are not committed.
+SHA-256 of every OCR file used, and the edition evidence line, are recorded in
+`sections.json` → `scans`; the fifteen transcription pages are pinned in
+`homeoint_pages.json`.
 
-## What the merge does, exactly
+## The sources that were offered and refused, with reasons
 
-`tools/extract.py`:
-
-1. finds the **body** by anchoring on the first aphorism's own closing words
-   ("restore the sick" / "sick to health"), so the synopsis in the front matter — which
-   numbers sections in its own style — cannot be mistaken for the text;
-2. accepts a section mark only if its digits can be **read** (a small OCR digit map
-   handles `O→0`, `l→1`, `S→5`, `B→8`, `g→9` …), and only inside a mark;
-3. keeps the **longest run of marks whose numbers go up**, so a stray page number
-   cannot become a section;
-4. prefers, for each number, the scan whose text is the cleanest prose **and whose next
-   mark is readable** (both edges known, so the text cannot run into the next section);
-5. never renumbers and never invents: whatever no scan can read is listed in
-   `missing` and named on screen.
-
-## The 36 that remain
-
-`3, 5, 11, 13, 17, 31, 39, 45, 67, 73, 77, 103, 111, 113, 114, 115, 119, 121, 125,
-131, 132, 138, 171, 173, 178, 179, 183, 190, 205, 214, 223, 224, 250, 251, 272, 273`
-
-In all three scans the mark for these is either destroyed or reads as something no rule
-can recover. Note what that means for reading: where a mark is missing, the text after
-it sits at the end of the **previous** section, which runs on until the next readable
-mark. The reader says "this section carries the following text too" nowhere — but the
-section lengths show it, and the count of 255 is honest about the gap.
-
-Sources rejected, with reasons: the Dudgeon fifth edition and the 1913 "rational art of
-healing" — different editions/translations, refused by the edition guard, not merely
-unused; `in.ernet.dli.2015.31779` (Digital Library of India,
-fifth and sixth editions in one volume) — its body OCR yields only a handful of readable
-marks, so it cannot fill a gap it cannot read either; the Dudgeon 5th edition and the
-1913 "rational art of healing" scans — a different translation, so their wording cannot
-be presented as Boericke's.
+- **`drcherylkasdorf.com/…/Organon-of-Medicine-6th-edition.pdf`** — this is *not* the
+  Boericke translation. Its title page reads: *"A new translation by Jost Künzli, M.D.,
+  Alain Naudé and Peter Pendleton"*, **translation copyright © 1982 The Hahnemann
+  Foundation**, all rights reserved. It is the sixth edition, but a different and
+  in-copyright translation: unusable, and mixing its wording in would have broken the
+  rule that this reader presents Boericke.
+- **`archive.org/details/in.ernet.dli.2015.31779`** — *Organon of Medicine (fifth and
+  sixth edition)* with introduction and commentary by **B. K. Sarkar**: a different book,
+  carrying both editions plus commentary, and its OCR cannot read its own section marks
+  (a handful of readable marks in the body). Refused on both counts.
+- **Dudgeon's fifth edition** and the 1913 *Organon of the rational art of healing* —
+  different editions/translations, refused by the edition guard rather than merely unused.
+- **homeopathyworld.in** per-aphorism pages — convenient, but they drop the footnotes and
+  garble at least one aphorism (`§150`), so they were not used.
 
 ## Rebuilding
 
-    # the three OCR files, named as above, then:
-    python3 tools/extract.py          # -> sections.json  (255 of 291)
+    # the three OCR files, and the fifteen transcription pages, named as above, then:
+    python3 tools/parse-homeoint.py   # -> homeoint_sections.json (291, sixth edition only)
+    python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 26 assertions
+    node test-node.js                 # the suite: 29 assertions
