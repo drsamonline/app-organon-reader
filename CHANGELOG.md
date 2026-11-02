@@ -1,8 +1,12 @@
 # Changelog
 
-## 1.0.1 — 2026-11-02
+## 1.1.0 — 2026-11-02
 
-- # Organon Reader — first release (1.0.0) Built from the app master list, entry **#132**, with the spec in `forge/QUEUE/app-organon-reader.md` (READY). - **The text**: *Organon of Medicine*, sixth edition, Boericke translation 1922, from the Internet Archive scan — public domain. 156 of the 291 sections carry a readable section mark; the reader publishes that number and names what is missing instead of renumbering. - **Search**: phrase search over the bundled text. A term that occurs in one section returns that section first, with its number and the matched line. A term shorter than two characters is refused as too short — never reported as "no matches". - **Bookmarks and notes**: kept on the device, verified by reading the value back; a write that cannot be made is reported and never shown as kept. - **Corrupt state**: an unreadable saved file is reported, offered for export, and does not stop the text opening. - **Offline**: no `fetch`, no `XMLHttpRequest`, no beacon, no socket, no off-origin resource. The suite asserts all four and that the bundle hashes the same twice.
+The text is now read from **three** scans of the 1922 Boericke translation instead of
+one, and merged: **255 of the book's 291 sections** (was 156), with each section
+recording the scan it came from and the reader saying so. 36 sections remain unreadable
+in every scan and are still named, not renumbered. See
+`changes/2026-11-02-multi-scan.md`.
 
 ## 1.0.0 — 2026-11-02
 

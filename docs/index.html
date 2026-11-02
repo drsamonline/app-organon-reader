@@ -142,6 +142,8 @@
     $("results").innerHTML = "";
     $("view").innerHTML =
       '<div class="secnum">Section ' + n + '</div>' +
+      (row.from ? '<div class="hint" style="margin:-6px 0 12px">read from the ' + esc(row.from) +
+        ' scan — one of ' + (BOOK.meta.scans || []).length + ' scans of the same 1922 translation</div>' : '') +
       '<article>' + esc(row.text) + '</article>' +
       '<div class="note"><label>Your note on this section</label>' +
       '<textarea id="nt" rows="3" placeholder="What you want to remember — kept on this device">' +

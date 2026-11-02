@@ -24,7 +24,7 @@
   function createIndex(sections) {
     if (!Array.isArray(sections)) throw new TypeError("sections must be an array");
     var rows = sections.map(function (s) {
-      return { n: s.n, text: s.text, hay: norm(s.text) };
+      return { n: s.n, text: s.text, from: s.from || null, hay: norm(s.text) };
     });
     return {
       rows: rows,
