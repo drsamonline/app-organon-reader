@@ -46,6 +46,10 @@
   .res:hover{background:#12161c}
   .res .line{color:var(--mut);font-size:13px;margin-top:2px}
   .res mark{background:#3a2f16;color:#ffe9b0;padding:0 2px;border-radius:3px}
+  .edlab{color:var(--mut);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+  select#edition{background:#12161c;color:var(--fg,#e8e6e3);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:13px}
+  .edchip{display:inline-block;font-size:11px;letter-spacing:.03em;text-transform:uppercase;border:1px solid #3a4a5a;color:#a8c4dd;border-radius:999px;padding:2px 8px;margin:0 6px 10px 0}
+  .edchip.same{border-color:#2f4a38;color:#9fd0b0}
   footer{padding:14px 26px;color:var(--mut);font-size:12px;border-top:1px solid var(--line)}
   @media (max-width:760px){ main{grid-template-columns:1fr} nav{border-right:0;border-bottom:1px solid var(--line);max-height:46vh} }
 </style>
@@ -54,9 +58,14 @@
 <header>
   <div>
     <h1>Organon Reader</h1>
-    <div class="sub">Organon of Medicine, 6th edition · Boericke translation, 1922 · offline, no account</div>
+    <div class="sub" id="sub">Organon of Medicine, 6th edition · Boericke translation, 1922 · offline, no account</div>
   </div>
   <div style="flex:1"></div>
+  <label class="edlab" for="edition">Edition</label>
+  <select id="edition" aria-label="Choose the edition to read">
+    <option value="sixth">Sixth — Boericke, 1922</option>
+    <option value="fifth">Fifth — Dudgeon, 1849</option>
+  </select>
   <input id="q" type="search" placeholder="Search the text — try &ldquo;vital force&rdquo;" aria-label="Search the text">
   <button id="go">Search</button>
 </header>
@@ -86,28 +95,60 @@
   </section>
 </main>
 
-<footer>
+<footer id="foot">
   Text: public domain (Hahnemann d. 1843; Boericke translation 1922), read from three scans of the
   sixth edition and merged. This reader presents the text and keeps your marks — it does not interpret or advise.
   Use ← and → to move between sections.
 </footer>
 
 <script src="organon-data.js"></script>
+<script src="organon5-data.js"></script>
 <script src="reader.js"></script>
 <script>
 (function () {
   "use strict";
-  var R = window.OrganonReader, BOOK = window.ORGANON;
-  var index = R.createIndex(BOOK.sections);
-  var nums = R.numbers(index);
-  var missing = (BOOK.meta.missing || []);
+  var R = window.OrganonReader;
+
+  /* ---- two editions, both bundled, both public domain ----
+   * They are different books, not two renderings of one: 74 sections word the doctrine
+   * differently and three exist only in the fifth. Each keeps its own bookmarks and notes,
+   * because a note on "§153" means a different paragraph in each. */
+  var EDITIONS = {
+    sixth: {
+      book: window.ORGANON,
+      store: "organon-reader:v1",
+      sub: "Organon of Medicine, 6th edition \u00b7 Boericke translation, 1922 \u00b7 offline, no account",
+      blurb: "Text: public domain (Hahnemann d. 1843; Boericke translation 1922), read from three scans of the " +
+             "sixth edition and merged."
+    },
+    fifth: {
+      book: window.ORGANON5,
+      store: "organon-reader:fifth:v1",
+      sub: "Organon of Medicine, 5th edition \u00b7 Dudgeon translation, 1849 \u00b7 offline, no account",
+      blurb: "Text: public domain (Hahnemann d. 1843; Dudgeon translation 1849), corroborated against three scans " +
+             "of the fifth edition. This edition runs to 294 numbered paragraphs, three more than the sixth."
+    }
+  };
+
+  /* Where the editions part company, computed once from both bundles. */
+  var DIFF = (function () {
+    var a = {}, b = {}, out = { differs: {}, onlyFifth: {}, onlySixth: {} };
+    (EDITIONS.sixth.book.sections || []).forEach(function (s) { a[s.n] = s.text; });
+    (EDITIONS.fifth.book.sections || []).forEach(function (s) { b[s.n] = s.text; });
+    Object.keys(b).forEach(function (n) {
+      if (a[n] == null) out.onlyFifth[n] = true;
+      else if (R.norm(a[n]) !== R.norm(b[n])) out.differs[n] = true;
+    });
+    Object.keys(a).forEach(function (n) { if (b[n] == null) out.onlySixth[n] = true; });
+    return out;
+  })();
+
+  var BOOK, index, nums, missing, store, state = R.empty(), KEY = "sixth";
 
   var storage = {
     get: function (k) { return localStorage.getItem(k); },
     set: function (k, v) { localStorage.setItem(k, v); }
   };
-  var store = new R.Store(storage);
-  var state = R.empty();
 
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) {
@@ -116,26 +157,47 @@
     });
   }
 
-  /* ---- boot: load the saved state, and say so when it is broken ---- */
-  var loaded = store.load();
-  if (loaded.ok) {
-    state = loaded.state;
-  } else if (loaded.reason === "corrupt") {
+  /* ---- open an edition: load its saved state, and say so when it is broken ---- */
+  function openEdition(key) {
+    var ed = EDITIONS[key] || EDITIONS.sixth;
+    KEY = EDITIONS[key] ? key : "sixth";
+    BOOK = ed.book;
+    index = R.createIndex(BOOK.sections);
+    nums = R.numbers(index);
+    missing = (BOOK.meta.missing || []);
+    store = new R.Store(storage, ed.store);
     state = R.empty();
-    $("banner").innerHTML = '<div class="banner bad">Your saved bookmarks and notes could not be read, so the reader opened ' +
-      'without them. The bundled text is untouched. The unreadable data is offered below — copy it out before you start again.' +
-      '<br><br><button class="ghost" id="raw">Show the unreadable data</button><pre id="rawbox" style="display:none;white-space:pre-wrap;font-size:12px"></pre></div>';
-  } else {
-    state = R.empty();
-    $("banner").innerHTML = '<div class="banner bad">This browser will not let the reader store anything, so bookmarks and notes ' +
-      'cannot be kept this session. The text still opens and searches normally.</div>';
-  }
-  if ($("raw")) $("raw").onclick = function () {
-    $("rawbox").style.display = "block";
-    $("rawbox").textContent = loaded.raw || "(empty)";
-  };
+    $("banner").innerHTML = "";
+    $("results").innerHTML = "";
+    $("sub").textContent = ed.sub;
+    $("edition").value = KEY;
+    $("foot").innerHTML = esc(ed.blurb) +
+      " This reader presents the text and keeps your marks — it does not interpret or advise. " +
+      "Use ← and → to move between sections. Switch edition at the top; each keeps its own bookmarks.";
 
-  $("status").innerHTML = '<div class="hint">' + esc(R.coverage(BOOK.meta).sentence) + '</div>';
+    var loaded = store.load();
+    if (loaded.ok) {
+      state = loaded.state;
+    } else if (loaded.reason === "corrupt") {
+      state = R.empty();
+      $("banner").innerHTML = '<div class="banner bad">Your saved bookmarks and notes for this edition could not be read, so the reader opened ' +
+        'without them. The bundled text is untouched. The unreadable data is offered below — copy it out before you start again.' +
+        '<br><br><button class="ghost" id="raw">Show the unreadable data</button><pre id="rawbox" style="display:none;white-space:pre-wrap;font-size:12px"></pre></div>';
+      if ($("raw")) $("raw").onclick = function () {
+        $("rawbox").style.display = "block";
+        $("rawbox").textContent = loaded.raw || "(empty)";
+      };
+    } else {
+      state = R.empty();
+      $("banner").innerHTML = '<div class="banner bad">This browser will not let the reader store anything, so bookmarks and notes ' +
+        'cannot be kept this session. The text still opens and searches normally.</div>';
+    }
+
+    $("status").innerHTML = '<div class="hint">' + esc(R.coverage(BOOK.meta).sentence) + '</div>';
+    buildList();
+    renderBookmarks();
+    show(state.last && index.byNumber[state.last] ? state.last : nums[0]);
+  }
 
   /* ---- the section list: every section the bundle carries, and the gaps named ---- */
   function buildList() {
@@ -173,13 +235,24 @@
     if (!row.from) return "";
     var sources = (BOOK.meta.scans || []);
     var src = sources.filter(function (s) { return s.label === row.from; })[0];
-    var kind = src && src.role === "transcription" ? "transcription" : "scan";
+    var kind = (src && src.role === "transcription") || /^MediT/.test(row.from) ? "transcription" : "scan";
     var tail = "";
     if (row.corroboration != null) {
       tail = " · corroborated against " + sources.filter(function (s) { return s.role === "scan"; }).length +
         " scans of the same printing (" + Math.round(row.corroboration * 100) + "% of its word-runs found verbatim)";
     }
     return '<div class="hint" style="margin:-8px 0 12px">text from the ' + esc(row.from) + " " + kind + tail + '</div>';
+  }
+
+  function chip(n) {
+    if (KEY === "fifth") {
+      if (DIFF.onlyFifth[n]) return '<div><span class="edchip">only in the fifth edition</span></div>';
+      if (DIFF.differs[n]) return '<div><span class="edchip">wording differs from the sixth edition</span></div>';
+      return '<div><span class="edchip same">same wording in both editions</span></div>';
+    }
+    if (DIFF.onlySixth[n]) return '<div><span class="edchip">only in the sixth edition</span></div>';
+    if (DIFF.differs[n]) return '<div><span class="edchip">wording differs from the fifth edition</span></div>';
+    return '<div><span class="edchip same">same wording in both editions</span></div>';
   }
 
   function show(n) {
@@ -197,6 +270,7 @@
         '<button class="ghost" id="next"' + (next ? "" : " disabled") + '>' + (next ? "§" + next : "end") + ' &rarr;</button>' +
       '</div>' +
       provenance(row) +
+      chip(n) +
       '<article>' + esc(row.text) + '</article>' +
       (row.notes && row.notes.length
         ? '<div class="note" style="font:15px/1.6 Georgia,serif"><label>Notes as printed with this section</label>' +
@@ -306,9 +380,8 @@
     if (e.key === "ArrowLeft") { var pv = R.step(index, cur, -1); if (pv) show(pv); }
   });
 
-  buildList();
-  renderBookmarks();
-  show(state.last && index.byNumber[state.last] ? state.last : nums[0]);
+  $("edition").onchange = function () { openEdition(this.value); };
+  openEdition("sixth");
 })();
 </script>
 </body>

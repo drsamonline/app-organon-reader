@@ -303,5 +303,75 @@ t("the bundle names its source and its licence, so a reader can check it", () =>
   assert.ok(/Boericke/.test(BOOK.meta.edition + " " + BOOK.meta.translator));
 });
 
+/* ---------- the second edition ---------- */
+const BOOK5 = require("./docs/organon5-data.js");
+const index5 = R.createIndex(BOOK5.sections);
+
+t("the fifth edition carries its own book, corroborated the same way", () => {
+  assert.strictEqual(index5.count, BOOK5.sections.length);
+  assert.strictEqual(BOOK5.meta.recovered, index5.count);
+  assert.deepStrictEqual(BOOK5.meta.missing, []);
+  assert.ok(/fifth edition/i.test(BOOK5.meta.edition), BOOK5.meta.edition);
+  assert.ok(/Dudgeon/.test(BOOK5.meta.translator), BOOK5.meta.translator);
+  const v = BOOK5.meta.verification;
+  assert.ok(v && typeof v.median === "number", "the fifth bundle must carry a verification figure");
+  assert.ok(v.median >= 0.9, "median corroboration must be high, got " + v.median);
+  assert.ok(v.min >= 0.6, "no section may fall below the acceptance floor, got " + v.min);
+  assert.strictEqual(v.sections_checked, index5.count);
+  for (const s of BOOK5.sections) {
+    assert.ok(s.corroboration >= 0.6, "§" + s.n + " was accepted below the floor (" + s.corroboration + ")");
+  }
+});
+
+t("the fifth edition is never corroborated by a sixth-edition scan", () => {
+  const scans = BOOK5.meta.scans || [];
+  assert.ok(scans.length >= 1, "expected at least one scan");
+  for (const s of scans) {
+    assert.ok(/fifth edition/i.test(s.edition), s.label + " must be the fifth edition");
+    assert.ok(/dudgeon/i.test(s.edition), s.label + " must be Dudgeon's translation");
+    assert.ok(!/boericke/i.test(s.edition), s.label + " must not be a Boericke scan");
+    assert.ok(/fifth/i.test(s.edition_evidence || ""), s.label + " must carry its edition evidence");
+  }
+});
+
+t("the two editions are different books, and the bundle says where", () => {
+  const six = {}, five = {};
+  BOOK.sections.forEach(s => { six[s.n] = R.norm(s.text); });
+  BOOK5.sections.forEach(s => { five[s.n] = R.norm(s.text); });
+  let differ = 0, only5 = 0;
+  for (const n of Object.keys(five)) {
+    if (!(n in six)) only5++;
+    else if (six[n] !== five[n]) differ++;
+  }
+  assert.ok(differ > 20, "expected many reworded sections, got " + differ);
+  assert.ok(only5 > 0, "expected at least one section the sixth does not carry");
+  for (const s of BOOK5.sections) {
+    assert.strictEqual(typeof s.differsFromSixth, "boolean", "§" + s.n + " must record whether it differs");
+    assert.strictEqual(typeof s.absentFromSixth, "boolean", "§" + s.n + " must record whether the sixth lacks it");
+  }
+});
+
+t("the fifth edition is searchable on its own terms", () => {
+  const res = R.search(index5, "vital force");
+  assert.ok(res.ok && res.results.length > 1, "expected several sections for 'vital force'");
+  assert.ok(res.results[0].n > 0);
+});
+
+t("both editions are bundled and neither is fetched", () => {
+  const html = fs.readFileSync(path.join(docs, "index.html"), "utf8");
+  for (const f of ["organon-data.js", "organon5-data.js"]) {
+    assert.ok(html.includes(f), "the page must load " + f);
+    assert.ok(fs.existsSync(path.join(docs, f)), "missing bundled file: " + f);
+  }
+  assert.ok(/id="edition"/.test(html), "the page must offer an edition selector");
+});
+
+t("each edition keeps its own bookmarks, so a note cannot land in the wrong book", () => {
+  const html = fs.readFileSync(path.join(docs, "index.html"), "utf8");
+  const keys = [...html.matchAll(/store:\s*"([^"]+)"/g)].map(m => m[1]);
+  assert.strictEqual(keys.length, 2, "expected one store key per edition, got " + JSON.stringify(keys));
+  assert.notStrictEqual(keys[0], keys[1], "the two editions must not share a store key");
+});
+
 console.log("\n" + pass + "/" + (pass + fail) + " assertions passed");
 process.exit(fail ? 1 : 0);

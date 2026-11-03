@@ -72,3 +72,42 @@ SHA-256 of every OCR file used, and the edition evidence line, are recorded in
     python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
     node test-node.js                 # the suite: 29 assertions
+
+## The fifth edition, added 2026-11-03
+
+The same fifteen pages carry the fifth edition beside the sixth: where they differ the page
+prints `§ N Fifth Edition` and `§ N Sixth Edition` one after another, and where they agree a
+bare `§ N`. `tools/parse-homeoint.py` takes the sixth block and skips the fifth on one line;
+`tools/build-organon5.py` inverts that selection — it takes the labelled fifth block and,
+for a bare heading, the shared text (which is the same in both editions).
+
+| | |
+|---|---|
+| Work | *Organon of Medicine*, fifth edition (1833) |
+| Translation | R. E. Dudgeon, M.D. (1849) |
+| Licence of the TEXT | Public domain — Hahnemann died 1843; Dudgeon 1849 |
+
+**Verification corpus — three scans of the fifth edition in Dudgeon's translation**
+
+| scan | Internet Archive item | sections admitted |
+|---|---|---|
+| `Wellcome-1893` | `b28136536` (Hahnemann Publishing Society, 1893) | all |
+| `IA-1849` | `b21307957` (W. Headland, 1849) | all |
+| `Google-1849` | `organonmedicine01hahngoog` (1849) | all |
+
+**The edition guard.** A scan is admitted only if its title page declares Dudgeon's
+translation *of the fifth German edition*, and only if it never names William Boericke as
+translator. A bare "Boericke" is **not** disqualifying: Boericke & Tafel were the New York
+publishers of Dudgeon's 1893 edition as well, so the name appears on its title page. The
+guard keys on the translator, not the publisher. This was found the hard way — a
+name-only guard refused the 1893 scan outright.
+
+**Result.** 12-letter-sequence coverage per section: median **0.979**, minimum **0.745**,
+all **294** sections above the 0.60 floor. Nothing was refused, so nothing was replaced by
+scan text.
+
+**What the fifth edition actually contains that the sixth does not:** 294 numbered
+paragraphs against the sixth's 291. §292–§294 (the mesmerism material) are absent from the
+sixth. 74 sections are worded differently. §89's body carries the transcription's own
+editorial marker "(Added to the Sixth Edition)" — left verbatim rather than silently edited,
+and recorded in the bundle's `meta.notes`.
