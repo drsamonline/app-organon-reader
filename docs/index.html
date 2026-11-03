@@ -52,6 +52,19 @@
   .edchip.same{border-color:#2f4a38;color:#9fd0b0}
   footer{padding:14px 26px;color:var(--mut);font-size:12px;border-top:1px solid var(--line)}
   @media (max-width:760px){ main{grid-template-columns:1fr} nav{border-right:0;border-bottom:1px solid var(--line);max-height:46vh} }
+
+  /* ---------- light theme ----------
+     Added so the page reads on paper. It overrides the page's own variables and
+     nothing else — no markup, no layout, no type. */
+  :root, html {
+    color-scheme: light;
+    --bg: #f7f6f2;
+    --card: #ffffff;
+    --ink: #14161a;
+    --mut: #5c6470;
+    --line: #e2ddd2;
+    --acc: #7f693e;
+  }
 </style>
 </head>
 <body>
