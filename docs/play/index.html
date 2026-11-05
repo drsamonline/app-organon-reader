@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organon Reader — the 1922 Boericke translation, offline</title>
+<meta name="description" content="An offline reader for the Organon of Medicine, sixth edition, in the 1922 English translation — every section listed, next/previous, full-text search, bookmarks and notes, no network.">
+<style>
+  :root{
+    --bg:#0f1115; --card:#161a20; --ink:#e9ecf1; --mut:#98a2b3; --line:#242a34;
+    --acc:#d8b26a; --acc-ink:#20180a; --bad:#ef6b6b; --ok:#5ec98a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink)}
+  body{font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:rgba(15,17,21,.97);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:15px;margin:0;font-weight:600}
+  header .sub{color:var(--mut);font-size:12px}
+  input[type=search],input[type=text],textarea{background:#0c0f14;border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 11px;font:inherit;font-size:14px;width:100%}
+  input[type=search]{max-width:300px}
+  #jump{max-width:110px}
+  button{background:var(--acc);color:var(--acc-ink);border:0;border-radius:9px;padding:8px 13px;font-weight:600;font-size:13px;cursor:pointer}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  button:disabled{opacity:.35;cursor:default}
+  main{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 58px)}
+  nav{border-right:1px solid var(--line);padding:12px;overflow:auto;max-height:calc(100vh - 58px)}
+  nav h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:16px 0 6px}
+  .row{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);border:1px solid transparent;border-radius:8px;padding:5px 8px;font-size:13px;font-weight:400;cursor:pointer}
+  .row:hover{border-color:var(--line);background:#12161c}
+  .row.on{background:#1b2028;border-color:var(--acc)}
+  .row .num{color:var(--acc);font-variant-numeric:tabular-nums;margin-right:6px}
+  .row.gap{color:#5c6472;cursor:default;font-style:italic;font-size:12px}
+  .row.gap:hover{background:transparent;border-color:transparent}
+  section.reader{padding:18px 26px;max-width:780px}
+  .navrow{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .navrow .spacer{flex:1}
+  .secnum{font:600 13px/1 system-ui;color:var(--acc);letter-spacing:.1em;text-transform:uppercase}
+  article{font:18px/1.75 Georgia,"Times New Roman",serif;white-space:pre-wrap}
+  .note{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:18px 0}
+  .note label{display:block;font-size:12px;color:var(--mut);margin-bottom:6px}
+  .banner{border:1px solid #4a3a1a;background:#1d1810;color:#e7d7b3;border-radius:10px;padding:10px 12px;font-size:13px;margin:12px 0}
+  .banner.bad{border-color:#5a2626;background:#1d1212;color:#f0c2c2}
+  .banner.ok{border-color:#20402c;background:#101a14;color:#bfe8cd}
+  .hint{color:var(--mut);font-size:13px}
+  .res{padding:8px;border-bottom:1px solid var(--line);cursor:pointer}
+  .res:hover{background:#12161c}
+  .res .line{color:var(--mut);font-size:13px;margin-top:2px}
+  .res mark{background:#3a2f16;color:#ffe9b0;padding:0 2px;border-radius:3px}
+  .edlab{color:var(--mut);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+  select#edition{background:#12161c;color:var(--fg,#e8e6e3);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:13px}
+  .edchip{display:inline-block;font-size:11px;letter-spacing:.03em;text-transform:uppercase;border:1px solid #3a4a5a;color:#a8c4dd;border-radius:999px;padding:2px 8px;margin:0 6px 10px 0}
+  .edchip.same{border-color:#2f4a38;color:#9fd0b0}
+  footer{padding:14px 26px;color:var(--mut);font-size:12px;border-top:1px solid var(--line)}
+  @media (max-width:760px){ main{grid-template-columns:1fr} nav{border-right:0;border-bottom:1px solid var(--line);max-height:46vh} }
+
+  /* ---------- light theme ----------
+     Added so the page reads on paper. It overrides the page's own variables and
+     nothing else — no markup, no layout, no type. */
+  :root, html {
+    color-scheme: light;
+    --bg: #f7f6f2;
+    --card: #ffffff;
+    --ink: #14161a;
+    --mut: #5c6470;
+    --line: #e2ddd2;
+    --acc: #7f693e;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Organon Reader</h1>
+    <div class="sub" id="sub">Organon of Medicine, 6th edition · Boericke translation, 1922 · offline, no account</div>
+  </div>
+  <div style="flex:1"></div>
+  <label class="edlab" for="edition">Edition</label>
+  <select id="edition" aria-label="Choose the edition to read">
+    <option value="sixth">Sixth — Boericke, 1922</option>
+    <option value="fifth">Fifth — Dudgeon, 1849</option>
+  </select>
+  <input id="q" type="search" placeholder="Search the text — try &ldquo;vital force&rdquo;" aria-label="Search the text">
+  <button id="go">Search</button>
+</header>
+
+<main>
+  <nav aria-label="Sections">
+    <div id="status"></div>
+
+    <h2>Sections — click one, or jump</h2>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="jump" type="text" inputmode="numeric" placeholder="§" aria-label="Jump to section number">
+      <button class="ghost" id="jumpgo">Go</button>
+    </div>
+    <div id="secs"></div>
+
+    <h2>Bookmarks</h2>
+    <div id="bms"><div class="hint">None yet. Open a section and press Bookmark.</div></div>
+
+    <h2>Your data</h2>
+    <button class="ghost" id="exp">Export bookmarks &amp; notes</button>
+  </nav>
+
+  <section class="reader">
+    <div id="banner"></div>
+    <div id="results"></div>
+    <div id="view"></div>
+  </section>
+</main>
+
+<footer id="foot">
+  Text: public domain (Hahnemann d. 1843; Boericke translation 1922), read from three scans of the
+  sixth edition and merged. This reader presents the text and keeps your marks — it does not interpret or advise.
+  Use ← and → to move between sections.
+</footer>
+
+<script src="organon-data.js"></script>
+<script src="organon5-data.js"></script>
+<script src="reader.js"></script>
+<script>
+(function () {
+  "use strict";
+  var R = window.OrganonReader;
+
+  /* ---- two editions, both bundled, both public domain ----
+   * They are different books, not two renderings of one: 74 sections word the doctrine
+   * differently and three exist only in the fifth. Each keeps its own bookmarks and notes,
+   * because a note on "§153" means a different paragraph in each. */
+  var EDITIONS = {
+    sixth: {
+      book: window.ORGANON,
+      store: "organon-reader:v1",
+      sub: "Organon of Medicine, 6th edition \u00b7 Boericke translation, 1922 \u00b7 offline, no account",
+      blurb: "Text: public domain (Hahnemann d. 1843; Boericke translation 1922), read from three scans of the " +
+             "sixth edition and merged."
+    },
+    fifth: {
+      book: window.ORGANON5,
+      store: "organon-reader:fifth:v1",
+      sub: "Organon of Medicine, 5th edition \u00b7 Dudgeon translation, 1849 \u00b7 offline, no account",
+      blurb: "Text: public domain (Hahnemann d. 1843; Dudgeon translation 1849), corroborated against three scans " +
+             "of the fifth edition. This edition runs to 294 numbered paragraphs, three more than the sixth."
+    }
+  };
+
+  /* Where the editions part company, computed once from both bundles. */
+  var DIFF = (function () {
+    var a = {}, b = {}, out = { differs: {}, onlyFifth: {}, onlySixth: {} };
+    (EDITIONS.sixth.book.sections || []).forEach(function (s) { a[s.n] = s.text; });
+    (EDITIONS.fifth.book.sections || []).forEach(function (s) { b[s.n] = s.text; });
+    Object.keys(b).forEach(function (n) {
+      if (a[n] == null) out.onlyFifth[n] = true;
+      else if (R.norm(a[n]) !== R.norm(b[n])) out.differs[n] = true;
+    });
+    Object.keys(a).forEach(function (n) { if (b[n] == null) out.onlySixth[n] = true; });
+    return out;
+  })();
+
+  var BOOK, index, nums, missing, store, state = R.empty(), KEY = "sixth";
+
+  var storage = {
+    get: function (k) { return localStorage.getItem(k); },
+    set: function (k, v) { localStorage.setItem(k, v); }
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* ---- open an edition: load its saved state, and say so when it is broken ---- */
+  function openEdition(key) {
+    var ed = EDITIONS[key] || EDITIONS.sixth;
+    KEY = EDITIONS[key] ? key : "sixth";
+    BOOK = ed.book;
+    index = R.createIndex(BOOK.sections);
+    nums = R.numbers(index);
+    missing = (BOOK.meta.missing || []);
+    store = new R.Store(storage, ed.store);
+    state = R.empty();
+    $("banner").innerHTML = "";
+    $("results").innerHTML = "";
+    $("sub").textContent = ed.sub;
+    $("edition").value = KEY;
+    $("foot").innerHTML = esc(ed.blurb) +
+      " This reader presents the text and keeps your marks — it does not interpret or advise. " +
+      "Use ← and → to move between sections. Switch edition at the top; each keeps its own bookmarks.";
+
+    var loaded = store.load();
+    if (loaded.ok) {
+      state = loaded.state;
+    } else if (loaded.reason === "corrupt") {
+      state = R.empty();
+      $("banner").innerHTML = '<div class="banner bad">Your saved bookmarks and notes for this edition could not be read, so the reader opened ' +
+        'without them. The bundled text is untouched. The unreadable data is offered below — copy it out before you start again.' +
+        '<br><br><button class="ghost" id="raw">Show the unreadable data</button><pre id="rawbox" style="display:none;white-space:pre-wrap;font-size:12px"></pre></div>';
+      if ($("raw")) $("raw").onclick = function () {
+        $("rawbox").style.display = "block";
+        $("rawbox").textContent = loaded.raw || "(empty)";
+      };
+    } else {
+      state = R.empty();
+      $("banner").innerHTML = '<div class="banner bad">This browser will not let the reader store anything, so bookmarks and notes ' +
+        'cannot be kept this session. The text still opens and searches normally.</div>';
+    }
+
+    $("status").innerHTML = '<div class="hint">' + esc(R.coverage(BOOK.meta).sentence) + '</div>';
+    buildList();
+    renderBookmarks();
+    show(state.last && index.byNumber[state.last] ? state.last : nums[0]);
+  }
+
+  /* ---- the section list: every section the bundle carries, and the gaps named ---- */
+  function buildList() {
+    var all = nums.slice();
+    missing.forEach(function (n) { all.push(n); });
+    all.sort(function (a, b) { return a - b; });
+    $("secs").innerHTML = all.map(function (n) {
+      if (index.byNumber[n]) {
+        return '<button class="row" data-n="' + n + '"><span class="num">§' + n + '</span>' +
+          esc(index.byNumber[n].text.slice(0, 46)) + '…</button>';
+      }
+      return '<div class="row gap">§' + n + ' — not readable in any scan</div>';
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll("#secs .row[data-n]"), function (el) {
+      el.onclick = function () { show(Number(el.dataset.n)); };
+    });
+  }
+
+  function renderBookmarks() {
+    var box = $("bms");
+    if (!state.bookmarks.length) {
+      box.innerHTML = '<div class="hint">None yet. Open a section and press Bookmark.</div>';
+      return;
+    }
+    box.innerHTML = state.bookmarks.map(function (n) {
+      return '<button class="row" data-n="' + n + '"><span class="num">§' + n + '</span>' +
+        esc((index.byNumber[n] ? index.byNumber[n].text : "").slice(0, 42)) + '…</button>';
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll("#bms .row"), function (el) {
+      el.onclick = function () { show(Number(el.dataset.n)); };
+    });
+  }
+
+  function provenance(row) {
+    if (!row.from) return "";
+    var sources = (BOOK.meta.scans || []);
+    var src = sources.filter(function (s) { return s.label === row.from; })[0];
+    var kind = (src && src.role === "transcription") || /^MediT/.test(row.from) ? "transcription" : "scan";
+    var tail = "";
+    if (row.corroboration != null) {
+      tail = " · corroborated against " + sources.filter(function (s) { return s.role === "scan"; }).length +
+        " scans of the same printing (" + Math.round(row.corroboration * 100) + "% of its word-runs found verbatim)";
+    }
+    return '<div class="hint" style="margin:-8px 0 12px">text from the ' + esc(row.from) + " " + kind + tail + '</div>';
+  }
+
+  function chip(n) {
+    if (KEY === "fifth") {
+      if (DIFF.onlyFifth[n]) return '<div><span class="edchip">only in the fifth edition</span></div>';
+      if (DIFF.differs[n]) return '<div><span class="edchip">wording differs from the sixth edition</span></div>';
+      return '<div><span class="edchip same">same wording in both editions</span></div>';
+    }
+    if (DIFF.onlySixth[n]) return '<div><span class="edchip">only in the sixth edition</span></div>';
+    if (DIFF.differs[n]) return '<div><span class="edchip">wording differs from the fifth edition</span></div>';
+    return '<div><span class="edchip same">same wording in both editions</span></div>';
+  }
+
+  function show(n) {
+    var row = index.byNumber[n];
+    if (!row) return;
+    state.last = n;
+    var marked = state.bookmarks.indexOf(n) !== -1;
+    var prev = R.step(index, n, -1), next = R.step(index, n, 1);
+    $("results").innerHTML = "";
+    $("view").innerHTML =
+      '<div class="navrow">' +
+        '<button class="ghost" id="prev"' + (prev ? "" : " disabled") + '>&larr; ' + (prev ? "§" + prev : "start") + '</button>' +
+        '<div class="secnum">Section ' + n + ' of ' + BOOK.meta.total_in_book + '</div>' +
+        '<div class="spacer"></div>' +
+        '<button class="ghost" id="next"' + (next ? "" : " disabled") + '>' + (next ? "§" + next : "end") + ' &rarr;</button>' +
+      '</div>' +
+      provenance(row) +
+      chip(n) +
+      '<article>' + esc(row.text) + '</article>' +
+      (row.notes && row.notes.length
+        ? '<div class="note" style="font:15px/1.6 Georgia,serif"><label>Notes as printed with this section</label>' +
+          row.notes.map(function (nt) { return '<p style="margin:0 0 .8em">' + esc(nt) + '</p>'; }).join("") + '</div>'
+        : '') +
+      '<div class="note"><label>Your note on this section</label>' +
+      '<textarea id="nt" rows="3" placeholder="What you want to remember — kept on this device">' +
+      esc(state.notes[n] || "") + '</textarea>' +
+      '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button id="bm">' + (marked ? "Remove bookmark" : "Bookmark") + '</button>' +
+      '<button class="ghost" id="savenote">Save note</button></div></div>' +
+      '<div class="navrow" style="margin-top:18px">' +
+        '<button class="ghost" id="prev2"' + (prev ? "" : " disabled") + '>&larr; Previous</button>' +
+        '<button class="ghost" id="next2"' + (next ? "" : " disabled") + '>Next &rarr;</button>' +
+      '</div>';
+
+    $("bm").onclick = function () { persist(R.toggleBookmark(state, n)); show(n); };
+    $("savenote").onclick = function () { persist(R.setNote(state, n, $("nt").value)); flash("Note saved."); };
+    [["prev", prev], ["prev2", prev]].forEach(function (p) {
+      var el = $(p[0]); if (el && p[1]) el.onclick = function () { show(p[1]); };
+    });
+    [["next", next], ["next2", next]].forEach(function (p) {
+      var el = $(p[0]); if (el && p[1]) el.onclick = function () { show(p[1]); };
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll("nav .row"), function (el) {
+      el.className = el.className.replace(" on", "") + (Number(el.dataset.n) === n ? " on" : "");
+    });
+    var cur = document.querySelector('#secs .row.on');
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "nearest" });
+    $("jump").value = "";
+  }
+
+  function persist(next) {
+    var res = store.commit(next);
+    if (res.ok) { state = next; renderBookmarks(); return true; }
+    $("banner").innerHTML = '<div class="banner bad">That was <strong>not</strong> saved (' +
+      esc(res.reason) + ') — most likely the browser storage is full or blocked. ' +
+      'The reader will not show a bookmark it did not keep.</div>';
+    return false;
+  }
+
+  function flash(msg) {
+    var el = document.createElement("div");
+    el.className = "banner ok";
+    el.textContent = msg;
+    $("banner").appendChild(el);
+    setTimeout(function () { el.remove(); }, 2500);
+  }
+
+  /* ---- jump ---- */
+  function jump() {
+    var v = String($("jump").value).replace(/[^0-9]/g, "");
+    if (!v) { flash("Type a section number, e.g. 148."); return; }
+    var n = Number(v);
+    if (index.byNumber[n]) { show(n); return; }
+    var near = R.step(index, n, 1);
+    if (near) {
+      show(near);
+      flash("§" + n + " is not readable in any scan — opened §" + near + ", the next one that is.");
+    } else {
+      flash("§" + n + " is not in this reader, and there is no later section to open.");
+    }
+  }
+
+  /* ---- search ---- */
+  function runSearch() {
+    var res = R.search(index, $("q").value);
+    if (!res.ok) {
+      $("results").innerHTML = '<div class="banner">That search term is too short to search for — ' +
+        'a one-letter term would match nearly every section. Try at least ' + res.min + ' characters.</div>';
+      return;
+    }
+    if (!res.results.length) {
+      $("results").innerHTML = '<div class="banner">No section of the ' + index.count +
+        ' carried in this reader contains “' + esc(res.term) + '”.</div>';
+      return;
+    }
+    $("results").innerHTML = '<div class="hint" style="margin-bottom:6px">' + res.results.length +
+      (res.results.length === 1 ? " section contains" : " sections contain") + ' “' + esc(res.term) + '”</div>' +
+      res.results.slice(0, 40).map(function (r) {
+        var line = esc(r.line).replace(new RegExp("(" + esc(res.term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"), "<mark>$1</mark>");
+        return '<div class="res" data-n="' + r.n + '"><strong><span class="num">§' + r.n + '</span></strong>' +
+          '<div class="line">' + line + '</div></div>';
+      }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll(".res"), function (el) {
+      el.onclick = function () { show(Number(el.dataset.n)); };
+    });
+  }
+
+  $("go").onclick = runSearch;
+  $("q").onkeydown = function (e) { if (e.key === "Enter") runSearch(); };
+  $("jumpgo").onclick = jump;
+  $("jump").onkeydown = function (e) { if (e.key === "Enter") jump(); };
+  $("exp").onclick = function () {
+    var blob = new Blob([R.exportState(state)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "organon-reader-bookmarks.json";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  };
+
+  document.addEventListener("keydown", function (e) {
+    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+    var cur = state.last || nums[0];
+    if (e.key === "ArrowRight") { var nx = R.step(index, cur, 1); if (nx) show(nx); }
+    if (e.key === "ArrowLeft") { var pv = R.step(index, cur, -1); if (pv) show(pv); }
+  });
+
+  $("edition").onchange = function () { openEdition(this.value); };
+  openEdition("sixth");
+})();
+</script>
+</body>
+</html>
