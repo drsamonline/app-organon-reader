@@ -9,9 +9,9 @@
       "at": "2026-11-04T20:01:29Z"
     },
     "docs/index.html": {
-      "sha": "712a4ae2bfda3cfb9125c889a2375a33eeae3120",
-      "producer": "bootstrap@2026-11-04",
-      "class": "generated",
+      "sha": "95c431e105188e92bb5c429e7c2b165d126f45de",
+      "producer": "human",
+      "class": "hand",
       "at": "2026-11-04T20:01:29Z"
     },
     ".github/workflows/build-apps.yml": {
