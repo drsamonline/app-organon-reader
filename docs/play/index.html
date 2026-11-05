@@ -6,64 +6,118 @@
 <title>Organon Reader — the 1922 Boericke translation, offline</title>
 <meta name="description" content="An offline reader for the Organon of Medicine, sixth edition, in the 1922 English translation — every section listed, next/previous, full-text search, bookmarks and notes, no network.">
 <style>
+  /* ---- the same page as the landing: gold on near-black, warm paper in light ---- */
   :root{
     --bg:#0f1115; --card:#161a20; --ink:#e9ecf1; --mut:#98a2b3; --line:#242a34;
     --acc:#d8b26a; --acc-ink:#20180a; --bad:#ef6b6b; --ok:#5ec98a;
+    --rule:rgba(216,178,106,.32); --soft:rgba(216,178,106,.10);
+    --serif:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f7f6f2; --card:#ffffff; --ink:#14161a; --mut:#5c6470; --line:#e2ddd2;
+      --acc:#8a6a1f; --acc-ink:#fffdf6; --bad:#a83232; --ok:#1f7a4d;
+      --rule:rgba(138,106,31,.35); --soft:rgba(138,106,31,.09);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1115; --card:#161a20; --ink:#e9ecf1; --mut:#98a2b3; --line:#242a34;
+    --acc:#d8b26a; --acc-ink:#20180a; --bad:#ef6b6b; --ok:#5ec98a;
+    --rule:rgba(216,178,106,.32); --soft:rgba(216,178,106,.10);
+  }
+  :root[data-theme="light"]{
+    --bg:#f7f6f2; --card:#ffffff; --ink:#14161a; --mut:#5c6470; --line:#e2ddd2;
+    --acc:#8a6a1f; --acc-ink:#fffdf6; --bad:#a83232; --ok:#1f7a4d;
+    --rule:rgba(138,106,31,.35); --soft:rgba(138,106,31,.09);
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink)}
-  body{font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  header{position:sticky;top:0;z-index:5;background:rgba(15,17,21,.97);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  header h1{font-size:15px;margin:0;font-weight:600}
-  header .sub{color:var(--mut);font-size:12px}
-  input[type=search],input[type=text],textarea{background:#0c0f14;border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 11px;font:inherit;font-size:14px;width:100%}
-  input[type=search]{max-width:300px}
-  #jump{max-width:110px}
-  button{background:var(--acc);color:var(--acc-ink);border:0;border-radius:9px;padding:8px 13px;font-weight:600;font-size:13px;cursor:pointer}
-  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-  button:disabled{opacity:.35;cursor:default}
-  main{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 58px)}
-  nav{border-right:1px solid var(--line);padding:12px;overflow:auto;max-height:calc(100vh - 58px)}
-  nav h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:16px 0 6px}
-  .row{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);border:1px solid transparent;border-radius:8px;padding:5px 8px;font-size:13px;font-weight:400;cursor:pointer}
-  .row:hover{border-color:var(--line);background:#12161c}
-  .row.on{background:#1b2028;border-color:var(--acc)}
-  .row .num{color:var(--acc);font-variant-numeric:tabular-nums;margin-right:6px}
-  .row.gap{color:#5c6472;cursor:default;font-style:italic;font-size:12px}
-  .row.gap:hover{background:transparent;border-color:transparent}
-  section.reader{padding:18px 26px;max-width:780px}
-  .navrow{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
-  .navrow .spacer{flex:1}
-  .secnum{font:600 13px/1 system-ui;color:var(--acc);letter-spacing:.1em;text-transform:uppercase}
-  article{font:18px/1.75 Georgia,"Times New Roman",serif;white-space:pre-wrap}
-  .note{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:18px 0}
-  .note label{display:block;font-size:12px;color:var(--mut);margin-bottom:6px}
-  .banner{border:1px solid #4a3a1a;background:#1d1810;color:#e7d7b3;border-radius:10px;padding:10px 12px;font-size:13px;margin:12px 0}
-  .banner.bad{border-color:#5a2626;background:#1d1212;color:#f0c2c2}
-  .banner.ok{border-color:#20402c;background:#101a14;color:#bfe8cd}
-  .hint{color:var(--mut);font-size:13px}
-  .res{padding:8px;border-bottom:1px solid var(--line);cursor:pointer}
-  .res:hover{background:#12161c}
-  .res .line{color:var(--mut);font-size:13px;margin-top:2px}
-  .res mark{background:#3a2f16;color:#ffe9b0;padding:0 2px;border-radius:3px}
-  .edlab{color:var(--mut);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
-  select#edition{background:#12161c;color:var(--fg,#e8e6e3);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:13px}
-  .edchip{display:inline-block;font-size:11px;letter-spacing:.03em;text-transform:uppercase;border:1px solid #3a4a5a;color:#a8c4dd;border-radius:999px;padding:2px 8px;margin:0 6px 10px 0}
-  .edchip.same{border-color:#2f4a38;color:#9fd0b0}
-  footer{padding:14px 26px;color:var(--mut);font-size:12px;border-top:1px solid var(--line)}
-  @media (max-width:760px){ main{grid-template-columns:1fr} nav{border-right:0;border-bottom:1px solid var(--line);max-height:46vh} }
+  body{font:16px/1.65 var(--serif)}
 
-  /* ---------- light theme ----------
-     Added so the page reads on paper. It overrides the page's own variables and
-     nothing else — no markup, no layout, no type. */
-  :root, html {
-    color-scheme: light;
-    --bg: #f7f6f2;
-    --card: #ffffff;
-    --ink: #14161a;
-    --mut: #5c6470;
-    --line: #e2ddd2;
-    --acc: #7f693e;
+  /* header: a book's running head, not a toolbar */
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 94%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:10px 18px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;font-weight:400;letter-spacing:.01em}
+  header .sub{color:var(--mut);font-size:11.5px;font-family:var(--mono);letter-spacing:.03em}
+
+  input[type=search],input[type=text],textarea{background:var(--card);border:1px solid var(--line);
+    color:var(--ink);border-radius:3px;padding:8px 11px;font:inherit;font-size:14px;width:100%}
+  input[type=search]{max-width:300px}
+  input[type=search]:focus,input[type=text]:focus,textarea:focus{outline:0;border-color:var(--acc)}
+  #jump{max-width:110px;font-family:var(--mono)}
+
+  button{background:var(--acc);color:var(--acc-ink);border:1px solid var(--acc);border-radius:3px;
+    padding:8px 14px;font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;cursor:pointer}
+  button:hover{filter:brightness(1.06)}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  button.ghost:hover{border-color:var(--acc);color:var(--acc);filter:none}
+  button:disabled{opacity:.35;cursor:default}
+
+  .toggle{margin-left:0;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 11px 5px 8px;
+    color:var(--mut);font-family:var(--mono);font-size:11.5px;line-height:1}
+  .toggle:hover{color:var(--ink);border-color:var(--acc)}
+  .toggle svg{width:13px;height:13px}
+
+  main{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 58px)}
+  nav{border-right:1px solid var(--line);padding:14px 12px;overflow:auto;max-height:calc(100vh - 58px)}
+  nav h2{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--mut);margin:18px 0 8px;font-weight:400}
+  nav h2::after{content:'';display:block;width:26px;height:1px;background:var(--rule);margin-top:8px}
+
+  .row{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);
+    border:1px solid transparent;border-radius:3px;padding:5px 8px;font-size:13px;font-weight:400;
+    font-family:var(--serif);cursor:pointer}
+  .row:hover{border-color:var(--line);background:var(--soft)}
+  .row.on{background:var(--soft);border-color:var(--acc)}
+  .row .num{color:var(--acc);font-family:var(--mono);font-size:11.5px;
+    font-variant-numeric:tabular-nums;margin-right:7px}
+  .row.gap{color:var(--mut);cursor:default;font-style:italic;font-size:12px}
+  .row.gap:hover{background:transparent;border-color:transparent}
+
+  section.reader{padding:26px 34px 60px;max-width:760px}
+  .navrow{display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap;
+    padding-bottom:14px;border-bottom:1px solid var(--line)}
+  .navrow .spacer{flex:1}
+  .secnum{font-family:var(--mono);font-weight:400;font-size:11px;color:var(--acc);
+    letter-spacing:.18em;text-transform:uppercase}
+
+  /* the text itself: a reading column, the way the landing is typeset */
+  article{font:19px/1.78 var(--serif);white-space:pre-wrap;letter-spacing:.002em}
+  article::first-letter{font-size:2.6em;line-height:.9;float:left;padding:6px 8px 0 0;color:var(--acc)}
+
+  .note{background:var(--card);border:1px solid var(--line);border-left:2px solid var(--acc);
+    border-radius:0 3px 3px 0;padding:12px 14px;margin:22px 0}
+  .note label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+  .banner{border:1px solid var(--rule);background:var(--soft);color:var(--ink);border-radius:3px;
+    padding:10px 13px;font-size:13.5px;margin:12px 0}
+  .banner.bad{border-color:var(--bad);background:transparent;color:var(--bad)}
+  .banner.ok{border-color:var(--ok);background:transparent;color:var(--ok)}
+  .hint{color:var(--mut);font-size:13px}
+  .res{padding:9px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+  .res:hover{background:var(--soft)}
+  .res .line{color:var(--mut);font-size:13px;margin-top:3px}
+  .res mark{background:var(--soft);color:var(--acc);padding:0 2px;border-radius:2px}
+  .edlab{color:var(--mut);font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase}
+  select#edition{background:var(--card);color:var(--ink);border:1px solid var(--line);
+    border-radius:3px;padding:7px 9px;font:inherit;font-size:13px}
+  .edchip{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+    text-transform:uppercase;border:1px solid var(--rule);color:var(--acc);border-radius:999px;
+    padding:2px 9px;margin:0 6px 10px 0}
+  .edchip.same{border-color:var(--ok);color:var(--ok)}
+  footer{padding:14px 34px;color:var(--mut);font-size:12px;font-family:var(--mono);
+    border-top:1px solid var(--line)}
+  @media (max-width:760px){
+    main{grid-template-columns:1fr}
+    nav{border-right:0;border-bottom:1px solid var(--line);max-height:46vh}
+    section.reader{padding:20px}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    article{animation:in .35s ease-out both}
+    @keyframes in{from{opacity:0}to{opacity:1}}
   }
 </style>
 </head>
@@ -71,7 +125,7 @@
 <header>
   <div>
     <h1>Organon Reader</h1>
-    <div class="sub" id="sub">Organon of Medicine, 6th edition · Boericke translation, 1922 · offline, no account</div>
+    <div class="sub" id="sub">Organon of Medicine · Boericke 1922 and Dudgeon 1849 · offline, no account</div>
   </div>
   <div style="flex:1"></div>
   <label class="edlab" for="edition">Edition</label>
@@ -81,6 +135,12 @@
   </select>
   <input id="q" type="search" placeholder="Search the text — try &ldquo;vital force&rdquo;" aria-label="Search the text">
   <button id="go">Search</button>
+  <button class="toggle" id="theme" type="button" aria-label="Switch colour theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M18.7 5.3 17 7M7 17l-1.7 1.7"/>
+    </svg>
+    <span id="theme-label">Light</span>
+  </button>
 </header>
 
 <main>
@@ -395,6 +455,27 @@
 
   $("edition").onchange = function () { openEdition(this.value); };
   openEdition("sixth");
+})();
+</script>
+<script>
+(function () {
+  var root = document.documentElement, btn = document.getElementById('theme');
+  var label = document.getElementById('theme-label'), KEY = 'organon-reader-theme';
+  function paint(mode) {
+    var dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    label.textContent = dark ? 'Dark' : 'Light';
+  }
+  var stored = localStorage.getItem(KEY);
+  paint(stored || 'system');
+  if (!stored) root.removeAttribute('data-theme');
+  btn.addEventListener('click', function () {
+    var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(KEY, next); paint(next);
+  });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+    if (!localStorage.getItem(KEY)) paint('system');
+  });
 })();
 </script>
 </body>
