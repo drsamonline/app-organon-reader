@@ -9,6 +9,8 @@
 
 # Organon Reader
 
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE)
+
 **The Organon of Medicine in two editions — Boericke\u2019s sixth (1922) and Dudgeon\u2019s fifth (1849) — searchable, bookmarkable and readable with the network off, and switchable while you read.** No account, no server, no telemetry. Open the page and read.
 
 - **App:** <https://drsamonline.github.io/app-organon-reader/>
