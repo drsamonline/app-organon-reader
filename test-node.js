@@ -279,14 +279,50 @@ t("the app makes no network call of any kind", () => {
   }
 });
 
-t("the page loads nothing from another origin — it works from file://", () => {
-  const html = fs.readFileSync(path.join(docs, "index.html"), "utf8");
-  const remote = [...html.matchAll(/(?:src|href)\s*=\s*["'](https?:)?\/\//gi)];
-  assert.strictEqual(remote.length, 0, "found an off-origin resource: " + JSON.stringify(remote[0]));
+/* The app page is docs/play/index.html; docs/index.html is the landing page that
+ * links to it (href="play/"). Three assertions below read docs/index.html as if
+ * it were the app, so once the landing page arrived they failed for a reason
+ * that was not a defect: the landing page has no edition selector and no store
+ * keys, and it carries the estate's support block as anchors. */
+const APP = path.join(docs, "play", "index.html");
+
+/* What a page LOADS and what it merely LINKS TO are different things: a browser
+ * fetches src, srcset, poster, <link href>, a CSS url(), @import and
+ * importScripts by itself; an <a href> is fetched only if a reader clicks it.
+ * The old check grepped (src|href)=https:// so the support block counted as a
+ * load. (LEARNINGS 13.) */
+function loadsFrom(text) {
+  const out = [];
+  let m;
+  const patterns = [
+    /\b(?:src|srcset|poster)\s*=\s*["']([^"']+)["']/gi,
+    /<link\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi,
+    /url\(\s*["']?([^"')]+)["']?\s*\)/gi,
+    /@import\s+(?:url\(\s*)?["']([^"']+)["']/gi,
+    /importScripts\s*\(\s*["']([^"']+)["']/gi,
+  ];
+  for (const re of patterns) while ((m = re.exec(text))) out.push(m[1].trim());
+  return out.filter(u => /^(?:https?:)?\/\//i.test(u) && !/w3\.org|schema\.org/.test(u));
+}
+
+t("the app page loads nothing from another origin — it works from file://", () => {
+  const html = fs.readFileSync(APP, "utf8");
+  assert.deepStrictEqual(loadsFrom(html), [], "the app page must load nothing off-origin");
   const scripts = [...html.matchAll(/<script[^>]*src\s*=\s*["']([^"']+)["']/gi)].map(m => m[1]);
+  assert.ok(scripts.length > 0, "the app page must load its own scripts");
   for (const s of scripts) {
-    assert.ok(fs.existsSync(path.join(docs, s)), "missing local script: " + s);
+    assert.ok(fs.existsSync(path.join(docs, "play", s)), "missing local script: " + s);
   }
+});
+
+t("the landing page is a page, and it links to the app", () => {
+  const page = fs.readFileSync(path.join(docs, "index.html"), "utf8");
+  assert.ok(/href="play\/"/.test(page), "the landing page must link to play/");
+  assert.deepStrictEqual(loadsFrom(page), [], "the landing page must load nothing off-origin");
+  const anchors = [...page.matchAll(/<a\b[^>]*\bhref\s*=\s*["'](https?:)?\/\/[^"']*/gi)];
+  assert.ok(anchors.length >= 3, "the support block is anchors, and it is counted out loud");
+  assert.ok(anchors.every(a => !loadsFrom(page).some(u => a[0].includes(u))),
+    "no support link may also be a load");
 });
 
 t("the text is identical in every session — it is bundled, not fetched", () => {
@@ -358,7 +394,7 @@ t("the fifth edition is searchable on its own terms", () => {
 });
 
 t("both editions are bundled and neither is fetched", () => {
-  const html = fs.readFileSync(path.join(docs, "index.html"), "utf8");
+  const html = fs.readFileSync(APP, "utf8");
   for (const f of ["organon-data.js", "organon5-data.js"]) {
     assert.ok(html.includes(f), "the page must load " + f);
     assert.ok(fs.existsSync(path.join(docs, f)), "missing bundled file: " + f);
@@ -367,7 +403,7 @@ t("both editions are bundled and neither is fetched", () => {
 });
 
 t("each edition keeps its own bookmarks, so a note cannot land in the wrong book", () => {
-  const html = fs.readFileSync(path.join(docs, "index.html"), "utf8");
+  const html = fs.readFileSync(APP, "utf8");
   const keys = [...html.matchAll(/store:\s*"([^"]+)"/g)].map(m => m[1]);
   assert.strictEqual(keys.length, 2, "expected one store key per edition, got " + JSON.stringify(keys));
   assert.notStrictEqual(keys[0], keys[1], "the two editions must not share a store key");
