@@ -266,6 +266,10 @@ t("export/import round-trips the user's marks", () => {
 
 /* ---------- Done means #3: the reader fetches nothing ---------- */
 const docs = path.join(__dirname, "docs");
+// The reader lives at docs/play/ and docs/index.html is its title page. These
+// assertions are about the APP, so they read the app: pointing them at the
+// landing page is how they went red on a repository that was working.
+const appPage = path.join(docs, "play", "index.html");
 const appFiles = ["index.html", "reader.js", "organon-data.js"].map(f => ({
   f, text: fs.readFileSync(path.join(docs, f), "utf8")
 }));
@@ -279,13 +283,25 @@ t("the app makes no network call of any kind", () => {
   }
 });
 
-t("the page loads nothing from another origin — it works from file://", () => {
+t("the title page leads to the reader, so moving the app cannot orphan it", () => {
   const html = fs.readFileSync(path.join(docs, "index.html"), "utf8");
+  assert.ok(/href\s*=\s*["']play\/["']/.test(html), "docs/index.html must link to play/");
+  assert.ok(fs.existsSync(appPage), "docs/play/index.html is missing");
+});
+
+t("the app loads nothing from another origin — it works from file://", () => {
+  // The APP, not the title page: the title page carries outbound links to the
+  // project's own pages on purpose. What must never leave the machine is a
+  // resource the reader loads.
+  const html = fs.readFileSync(appPage, "utf8");
   const remote = [...html.matchAll(/(?:src|href)\s*=\s*["'](https?:)?\/\//gi)];
   assert.strictEqual(remote.length, 0, "found an off-origin resource: " + JSON.stringify(remote[0]));
   const scripts = [...html.matchAll(/<script[^>]*src\s*=\s*["']([^"']+)["']/gi)].map(m => m[1]);
   for (const s of scripts) {
-    assert.ok(fs.existsSync(path.join(docs, s)), "missing local script: " + s);
+    // Relative to the PAGE, not to docs/: the app sits in play/ and reaches its
+    // data with ../organon-data.js. Resolving against docs/ looked for the file
+    // one directory too high and called a present script missing.
+    assert.ok(fs.existsSync(path.join(path.dirname(appPage), s)), "missing local script: " + s);
   }
 });
 
@@ -358,7 +374,7 @@ t("the fifth edition is searchable on its own terms", () => {
 });
 
 t("both editions are bundled and neither is fetched", () => {
-  const html = fs.readFileSync(path.join(docs, "index.html"), "utf8");
+  const html = fs.readFileSync(appPage, "utf8");
   for (const f of ["organon-data.js", "organon5-data.js"]) {
     assert.ok(html.includes(f), "the page must load " + f);
     assert.ok(fs.existsSync(path.join(docs, f)), "missing bundled file: " + f);
@@ -367,7 +383,7 @@ t("both editions are bundled and neither is fetched", () => {
 });
 
 t("each edition keeps its own bookmarks, so a note cannot land in the wrong book", () => {
-  const html = fs.readFileSync(path.join(docs, "index.html"), "utf8");
+  const html = fs.readFileSync(appPage, "utf8");
   const keys = [...html.matchAll(/store:\s*"([^"]+)"/g)].map(m => m[1]);
   assert.strictEqual(keys.length, 2, "expected one store key per edition, got " + JSON.stringify(keys));
   assert.notStrictEqual(keys[0], keys[1], "the two editions must not share a store key");
