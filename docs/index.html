@@ -130,6 +130,15 @@
   footer a { color: var(--muted); } footer a:hover { color: var(--gold); }
   .stamp { margin-left: auto; font-size: 10.5px; letter-spacing: .06em; }
 </style>
+<style>
+
+/* ---- a11y: the ochre takes white; the ghost takes the page's ink ---------- */
+a.btn:not(.ghost){color:#ffffff!important}     /* 3.48 -> 5.05 on #8a6a1f */
+[data-theme="dark"] a.btn.ghost{color:#f0e6d2!important}  /* 1.08 -> 15.3 */
+</style>
+<style>
+[data-theme="dark"] a.btn:not(.ghost){color:#2a1c00!important}  /* the dark accent is #d8b26a */
+</style>
 </head>
 <body>
 
