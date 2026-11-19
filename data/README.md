@@ -120,7 +120,7 @@ not missing from this repository by oversight:
 | edition | text carried | in the reader |
 |---|---|---|
 | First (1810) | C. E. Wheeler, English, 1913 | **yes** — `tools/build-organon1.py` |
-| Second (1819) | Hahnemann's **German** | **yes** — `tools/build-organon2.py` |
+| Second (1819) | Hahnemann's **German** — the printed *Inhaltsanzeige* | **yes** — `tools/build-organon2.py` |
 | Third (1824) | Hahnemann's **German** | **yes** — `tools/build-organon3.py` |
 | Second (1819) | **Brunnow's French, 1824** | **yes** — `tools/build-organon2-fr.py` |
 | Second, third | **machine English** of the German | **yes, labelled** — `tools/translate-mt.py` |
@@ -227,10 +227,10 @@ would be worse. The reader prints `§90–105`.
 | Work | *Organon der Heilkunst* (1819) | *Organon der Heilkunst* (1824) | *Organon de l'art de guérir* (1824) |
 | Language | German | German | French |
 | Reading text | `organonderheilku01hahn` | `organonderheilku02hahn` | `b2930538x` |
-| Second copy | `10476160bsb` — corpus only | `organonderheilk01hahngoog` | `bub_gb_Qr_z-ZNDW48C` |
+| Second copy | `10476160bsb` — numbers and corpus | `organonderheilk01hahngoog` | `bub_gb_Qr_z-ZNDW48C` |
 | Numbered to | §318 | §320 | §318 |
-| Blocks carried | 88 | 297 | 314 |
-| Numbered paragraphs covered | 176 of 318 | 307 of 320 | 314 of 318 |
+| Blocks carried | 98 | 297 | 314 |
+| Numbered paragraphs covered | 280 of 318 | 307 of 320 | 314 of 318 |
 | Licence of the text | public domain | public domain | public domain |
 
 **The edition guards.** A German scan is admitted only if its own front matter says
@@ -238,14 +238,32 @@ would be worse. The reader prints `§90–105`.
 Dudgeon nor Devrient — a translation is a different book. A French scan must say
 `TRADUIT` and name Brunnow, and must name none of those translators.
 
-**Why the 1819 German is only partly there.** The reading copy (`organonderheilku01hahn`) is
-a poor scan: its margin numbers are mangled (`§106` came out as `J.06`, `§110` as `JlO`), and
-the second copy (`10476160bsb`, Bayerische Staatsbibliothek) is a library scan whose own
-marks are unreadable, so it can corroborate words but not numbers. 88 blocks covering 176 of
-the 318 numbered paragraphs came out clean; the other 142 numbers are listed in
-`meta.missing` and shown in the section list as gaps, never guessed. The French translation
-of the same edition carries 314 of 318, which is where a reader should go for the sections
-the German copy lost.
+**What the 1819 German bundle actually is.** The 1819 book sets an *Inhaltsanzeige* before its
+Einleitung: a list giving each paragraph's number in the margin — singly, or as a range where
+several paragraphs share one thought — with its rubric. That list is what this bundle carries.
+The paragraphs themselves are printed after the Einleitung, and **they are not carried**: both
+surviving scans read the body's pages across the fold, so a paragraph's tail lands inside the
+next one (`§10` is clean, `§20` has a page of §19 spliced into it). Setting that right is a
+transcription, not a parse, and the reader would rather carry the list whole than the
+paragraphs broken. Brunnow's French beside it carries the paragraphs, 314 of 318.
+
+**Why the 1819 German is still only mostly there.** The reading copy
+(`organonderheilku01hahn`) mangles margin numbers (`§106` came out as `J.06`, `§110` as `JlO`,
+`§181` as `l8l`); the second copy (`10476160bsb`, Bayerische Staatsbibliothek) reads several
+of them where the other cannot, but not all. Reading the list tolerantly — a leading `J` or
+`j` kept as `1`, a full stop printed inside a number folded away, junk between a number and
+its dash — brings 280 of the 318 numbered paragraphs under a block. The 38 that remain are
+listed in `meta.missing` and shown in the section list as gaps, never guessed: the entries
+whose numbers both copies destroyed (`§8–11` reads `<q. 10. 11.`, `§252–257` reads
+`2Ö2 — - s5j.`), and one entry (`§259–274`) that the reading copy lost altogether.
+
+**Ranges that lost an end.** Three entries print one end of a range and mangle the other
+(`J.06 — 108`, `245 — '200`, `394 — -228`). The printed end is kept; the lost end is taken
+from the entry beside it — the list enumerates the paragraphs in order — and only when
+Brunnow's French contents list, which prints every paragraph 1–318, has every number the
+restored range would cover. Each such block records it in `numbers_from`, and the count is
+in `meta`; nothing is restored silently. Today that recovers §110–119, §182–228 and
+§245–250.
 
 **Why the 1824 German is nearly whole.** Both copies read their marks (`organonderheilku02hahn`
 and Google's `organonderheilk01hahngoog`), so 297 blocks covering 307 of 320 paragraphs were
@@ -253,7 +271,8 @@ recovered; the 13 lost numbers are named. The two copies are different scans of 
 printing and are parsed independently.
 
 **What is not carried.** Hahnemann's Introduction, prefaces and footnotes are not part of the
-numbered text; none of these three bundles carries them, and the reader says so.
+numbered text; none of these three bundles carries them, and the reader says so. The 1819
+bundle also does not carry the 1819 paragraphs (see above) — only the list that numbers them.
 
 **Rebuilding.** The OCR files are not committed. Fetch them (`<id>_djvu.txt` from
 `https://archive.org/download/<id>/`) into `$ORGANON_SRC` as
@@ -261,9 +280,13 @@ numbered text; none of these three bundles carries them, and the reader says so.
 `organon3/organonderheilku02hahn.txt`, `organon3/organonderheilk01hahngoog.txt`,
 `organon2fr/b2930538x.txt` and `organon2fr/bub_gb_Qr_z-ZNDW48C.txt`, then:
 
+    ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon2-fr.py
     ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon2.py
     ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon3.py
-    ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon2-fr.py
+
+The French build runs first: `tools/build-organon2.py` corroborates the restored range ends
+against the paragraph numbers in `docs/organon2-fr-data.js`, and falls back to leaving them
+gaps if that bundle is not there.
 
 ## The machine translations — generated text, quarantined
 

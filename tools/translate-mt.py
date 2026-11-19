@@ -32,8 +32,12 @@ CACHE = os.environ.get("ORGANON_MT_CACHE", "/tmp/organon-mt-cache.json")
 BOOKS = [
     {"src": "organon2-sections.json", "out": "docs/organon2-en-mt-data.js",
      "global": "ORGANON2MT", "de": "docs/organon2-data.js",
-     "edition": "Second edition (1819), machine translation of Hahnemann's German",
-     "source_title": "Organon der Heilkunst (1819)"},
+     "edition": "Second edition (1819), machine translation of Hahnemann's printed "
+                "Inhaltsanzeige",
+     "source_title": "Organon der Heilkunst (1819)",
+     "note": "The German behind this bundle is the edition's printed Inhaltsanzeige — the "
+             "contents list of numbered rubrics — not its paragraphs, which survive only "
+             "in scans whose page order is broken (see data/README.md)."},
     {"src": "organon3-sections.json", "out": "docs/organon3-en-mt-data.js",
      "global": "ORGANON3MT", "de": "docs/organon3-data.js",
      "edition": "Third edition (1824), machine translation of Hahnemann's German",
@@ -162,7 +166,7 @@ def main():
                          "German is the authority."),
             },
             "scans": de["meta"].get("scans", []),
-            "notes": [
+            "notes": (([book["note"]] if book.get("note") else []) + [
                 "Machine translation of the German text, made once when the bundle was built. "
                 "It is not Hahnemann's English and no publisher ever issued it.",
                 "It exists because the second and third editions were never translated into "
@@ -170,7 +174,7 @@ def main():
                 "English these editions can have, and it is labelled as generated.",
                 "The reader still fetches nothing: the translation was made at build time and "
                 "ships inside this file.",
-            ],
+            ]),
             "generator": "tools/translate-mt.py",
         }
         bundle = {"meta": meta, "sections": sections}

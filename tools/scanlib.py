@@ -186,6 +186,248 @@ def parse(path, max_n, end_matter=None, drop=None, body=None):
     return secs
 
 
+# --- reading a printed contents list -------------------------------------------
+#
+# The 1819 and 1824 German printings open with an Inhaltsanzeige: a list that gives
+# the paragraph numbers — a single one, or a range where several paragraphs share one
+# thought — and one rubric in the margin style, `90 — 105.  Vorschrift, wie ...`.  Its
+# marks are the same margin numbers as the text, only compressed onto one line, so the
+# reader is the same; what changes is that a range's *start* is often the character OCR
+# mangled worst (`J.06` for 106, `JlO` for 110, `j5o` for 150), because a leading 1 is
+# printed as a bare stroke and read as a letter.
+
+GLYPHS = dict(DIGITS)
+GLYPHS.update({"j": "1", "J": "1", "t": "1", "f": "1", "F": "1", "T": "1"})
+SEP = r"[\s.,;:*+«'\u201a\u201e\"()\[\]|~?—–-]*"
+MARK_TOKEN = re.compile(r"^([0-9A-Za-z|!~?]{1,4})" + SEP)
+MARK_PREFIX = re.compile(r"^[§$Ss|*TtFfJj•.,;:'\"„“\s]*")
+BARE_ONE = "JjIi|l!tfT1"           # a leading character OCR may have read for `1`
+
+
+def _number(tok, max_n):
+    value = "".join(GLYPHS.get(c, c) for c in tok)
+    if not value.isdigit() or len(tok) > 4:
+        return None
+    # a number must show at least one digit of its own. A token of letters only is a
+    # word more often than a number (`ist` reads as 151, `Jn` as 16), and a number
+    # written wholly in letters cannot be told from the word it resembles — `igS` is
+    # 193 or 195 — so it is left as a gap and given to the second scan instead.
+    if not any(c.isdigit() for c in tok) and len(tok) > 1:
+        return None
+    n = int(value)
+    return n if 1 <= n <= max_n else None
+
+
+def _prose(r):
+    """True when what follows the numbers is the entry's own words."""
+    return bool(PROSE.match(r.lstrip(" .,;:*'$§—–-«\"„“()[]")))
+
+
+def mark_readings(line, max_n):
+    """Every way this line can be read as a printed contents entry, best first.
+
+    Each reading is `(numbers, open_start, open_end, rest)`. `keep` is the reading
+    that keeps a leading letter as the digit 1, because a leading 1 is printed as a
+    bare stroke and read as a letter (`J.06` = 106). It is tried second, so a line
+    that really does start with a mark character is not read as a number by accident.
+    A full stop printed inside a number is folded away first.
+
+    A range may lose one end to OCR. `open_end` says its first number was read but
+    the number after the dash was not (`181 — igS-`); `open_start` says the number
+    before the dash was lost but the one after it was read (`394 — -228.`). Neither
+    end is filled in here: the caller decides, and says where the number came from.
+    """
+    s = re.sub(r"(?<=[0-9A-Za-z])[.,](?=[0-9])", "", line.strip())
+    out = []
+    for keep in (False, True):
+        rest = s
+        if not keep:
+            m = MARK_PREFIX.match(rest)
+            if m:
+                rest = rest[m.end():]
+        elif not rest or rest[0] not in BARE_ONE:
+            continue
+        nums, r, toks = [], rest, []
+        while len(nums) < 4:
+            m = MARK_TOKEN.match(r)
+            if not m:
+                break
+            tok = m.group(1)
+            # a lone letter that begins a word is a word, not a number (`Für`)
+            if len(tok) == 1 and tok.isalpha() and r[m.end():m.end() + 1].isalpha():
+                break
+            n = _number(tok, max_n)
+            if n is None:
+                break
+            nums.append(n)
+            toks.append(tok)
+            r = r[m.end():]
+        # a reading that kept a leading letter must still show a real digit somewhere,
+        # otherwise any word beginning with `i` would read as a number (`ist` = 151)
+        if keep and not any(c.isdigit() for t in toks for c in t):
+            nums = []
+        if nums and _prose(r):
+            if len(nums) == 1 or (max(nums) - min(nums) <= 40 and
+                                  all(b > a for a, b in zip(nums, nums[1:]))):
+                out.append((tuple(nums), False, False, r))
+                continue
+        # a range that cannot be read whole still keeps the end printed first
+        if nums and re.match(r"^[0-9A-Za-z|!~?]{1,4}\s*[—–-]", rest):
+            out.append((tuple(nums[:1]), False, True, r))
+            continue
+        # the first number is unreadable but a later one is printed: `394 — -228.`
+        m = None if nums else re.match(
+            r"^[0-9A-Za-z|!~?]{1,4}\s*[—–-]+\s*" + SEP, rest)
+        if not m or keep:
+            continue
+        nums, r = [], rest[m.end():]
+        while len(nums) < 4:
+            t = MARK_TOKEN.match(r)
+            if not t:
+                break
+            n = _number(t.group(1), max_n)
+            if n is None:
+                break
+            nums.append(n)
+            r = r[t.end():]
+        if nums and _prose(r):
+            out.append((tuple(nums), True, False, r))
+    return out
+
+
+OVERVIEW_STOP = re.compile(r"^\s*(?:Einleitung|Vorrede|Anhang|Inhalt|Register|"
+                           r"Druckfehler|Verbesserungen|Nachschrift|Inhaltsanzeige)\b")
+
+
+def overview_entries(path, max_n, body=None, end_matter=None, drop=None):
+    """Ordered entries of a printed contents list: [{line, printed, readings, text}].
+
+    The list ends at the next section heading (`Einleitung` in the 1819 printing), so
+    the book's footnotes and the bookseller's advertisements cannot become entries.
+    Each entry keeps every reading of its number line; `resolve_entries` decides, and
+    an entry whose numbers cannot be settled simply carries none.
+    """
+    lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
+    start = 0
+    if body is not None:
+        for i, line in enumerate(lines):
+            if body.search(line):
+                start = max(0, i - 2)
+                break
+    marks = []
+    for i, line in enumerate(lines):
+        if i < start or not line.strip():
+            continue
+        if marks and (OVERVIEW_STOP.match(line) or OVERVIEW_STOP.match(line.strip())):
+            break
+        got = mark_readings(line, max_n)
+        if got:
+            marks.append((i, got, line))
+    out = []
+    for k, (i, got, line) in enumerate(marks):
+        stop = marks[k + 1][0] if k + 1 < len(marks) else len(lines)
+        block = "\n".join(lines[i + 1:stop])
+        out.append({"line": i, "printed": line.strip(),
+                    "readings": [{"numbers": list(n), "open_start": a, "open_end": b,
+                                  "rest": r} for n, a, b, r in got],
+                    "text": clean(got[0][3] + "\n" + block, end_matter, drop)})
+    return out
+
+
+def resolve_entries(entries, max_n=319, known=None):
+    """Settle each entry's numbers, by what is printed first and by order second.
+
+    Every reading of a line is offered; the one kept is the one whose first number
+    still lies ahead of the previous kept entry. That is how `j54.` (read as 54 on its
+    face, 154 with the leading `j` kept) is settled: 54 would run backwards.
+
+    A range that lost one end to OCR keeps the end that was printed. The lost end is
+    taken from the entry beside it (`181 — igS` ends where the next entry begins; the
+    entry before `394 — 228` ends where this one begins) — the printed list enumerates
+    the paragraphs in order, and Brunnow's French contents list prints every one of
+    them, so the numbering has no hole for an entry to fall into. Each restored end is
+    recorded on the entry (`restored`), never silently applied, and an end that cannot
+    be settled that way stays unknown and becomes a named gap.
+    """
+    last = 0
+    for e in entries:
+        chosen = None
+        for r in e["readings"]:
+            nums = r["numbers"]
+            if not nums:
+                continue
+            if nums[0] > last:
+                chosen = r
+                break
+        e["numbers"] = list(chosen["numbers"]) if chosen else []
+        e["open_start"] = bool(chosen and chosen["open_start"])
+        e["open_end"] = bool(chosen and chosen["open_end"])
+        e["restored"] = []
+        if chosen:
+            last = chosen["numbers"][-1]
+    def corroborated(span):
+        """Every number of the span is printed in the French contents list."""
+        if known is None:
+            return True
+        have = sum(1 for n in span if n in known)
+        return have >= 0.85 * len(span)
+
+    for k, e in enumerate(entries):
+        nxt = entries[k + 1] if k + 1 < len(entries) else None
+        if e["numbers"] and e["open_end"] and nxt and nxt["numbers"] and not nxt["open_start"]:
+            end = nxt["numbers"][0] - 1
+            if end > e["numbers"][-1] and corroborated(range(e["numbers"][-1], end + 1)):
+                e["numbers"].append(end)
+                e["restored"].append({"end": end, "from": "the next entry's first number"})
+        elif e["open_start"] and k and entries[k - 1]["numbers"]:
+            start = entries[k - 1]["numbers"][-1] + 1
+            if (e["numbers"] and start < e["numbers"][0]
+                    and corroborated(range(start, e["numbers"][0] + 1))):
+                e["numbers"].insert(0, start)
+                e["restored"].append({"start": start,
+                                      "from": "the previous entry's last number"})
+    for e in entries:
+        if e["numbers"] and e["open_end"] and not e["restored"]:
+            e["numbers"] = e["numbers"][:1]
+    return entries
+
+
+def bundle_numbers(path):
+    """The paragraph numbers a bundle already built from a scan carries."""
+    if not os.path.exists(path):
+        print(f"  !! {path} not built — the range ends cannot be corroborated")
+        return None
+    text = open(path, encoding="utf-8").read()
+    text = text[text.index("return ") + 7:text.rindex("};") + 1]
+    return {int(m) for m in re.findall(r'\{"n":(\d+)', text)}
+
+
+def words(text):
+    """The words of a rubric, folded to letters the two scans agree on."""
+    return [w for w in (letters(x) for x in re.split(r"\s+", text)) if len(w) >= 4]
+
+
+def same_entry(text, others, take=8, need=0.75):
+    """The entry in a second scan of the same printing that prints the same words.
+
+    A contents entry is one line of rubric, so its opening words identify it. A second
+    scan is only used when its opening words agree (`need`), and only the numbers are
+    taken from it — never its text.
+    """
+    mine = words(text)[:take]
+    if len(mine) < 3:
+        return None
+    best, best_score = None, 0.0
+    for other in others:
+        theirs = set(words(other["text"])[:take])
+        if not theirs:
+            continue
+        score = len(set(mine) & theirs) / len(mine)
+        if score > best_score:
+            best, best_score = other, score
+    return best if best_score >= need else None
+
+
 def letters(s):
     """Fold to the letters both copies of a German or French page agree on."""
     s = s.lower()
@@ -285,22 +527,37 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
                 origin[n] = lab
                 to_of[n] = to
 
-    refused = []
+    _finish(merged, origin, to_of, {}, corpus, max_n, out_js, out_json, global_name,
+            {"title": title, "edition": edition, "translator": translator,
+             "language": language,
+             "source": source_url or "https://archive.org/details/" + sources[0]["ident"]},
+            comment, confidence_note, floor, notes, generator, extras, scan_meta_list)
+
+
+def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, global_name,
+            head, comment, confidence_note, floor, notes, generator, extras, scans):
+    """Verify every block against the scans, name the gaps, write the bundle."""
+    verify, refused = {}, []
     for n in list(merged):
+        if len(letters(merged[n])) < 12:
+            # a rubric shorter than the window carries no sequence to look for; it is
+            # kept and marked as unverifiable rather than refused
+            verify[n] = None
+            continue
         c = round(coverage(merged[n], corpus), 4)
         verify[n] = c
         if c < floor:
             refused.append({"n": n, "corroboration": c})
             del merged[n], origin[n], to_of[n]
+            extra.pop(n, None)
 
     covered = set()
     for n, to in to_of.items():
         covered.update(range(n, to + 1))
     missing = [n for n in range(1, max_n + 1) if n not in covered]
-    cov = [verify[n] for n in merged]
-    meta = {
-        "title": title, "edition": edition, "translator": translator, "language": language,
-        "source": source_url or ("https://archive.org/details/" + sources[0]["ident"]),
+    cov = [v for v in verify.values() if v is not None]
+    meta = dict(head)
+    meta.update({
         "licence": "Public domain: Hahnemann died 1843; this printing is from the 1820s",
         "total_in_book": max_n, "recovered": len(merged), "missing": missing,
         "blocks": len(merged), "numbered_paragraphs_carried": len(covered),
@@ -313,14 +570,17 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
             "sections_checked": len(cov), "floor": floor, "refused": refused,
             "note": confidence_note,
         },
-        "scans": scan_meta_list,
+        "scans": scans,
         "notes": list(notes),
-    }
+    })
     for key, value in extras:
         meta[key] = value
-    sections = [{"n": n, "to": to_of[n], "text": merged[n], "notes": [],
-                 "from": origin[n], "corroboration": verify[n], "accepted": True}
-                for n in sorted(merged)]
+    sections = []
+    for n in sorted(merged):
+        row = {"n": n, "to": to_of[n], "text": merged[n], "notes": [],
+               "from": origin[n], "corroboration": verify[n], "accepted": True}
+        row.update(extra.get(n, {}))
+        sections.append(row)
     size = write_bundle(out_js, out_json, meta, sections, global_name, comment)
     print(f"  blocks {len(merged)} of {max_n} numbered paragraphs "
           f"({len(covered)} covered) | median {meta['verification']['median']} "
@@ -328,3 +588,22 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
     print(f"  missing {len(missing)}: {missing[:24]}{'…' if len(missing) > 24 else ''}")
     print(f"  wrote {out_js} {size} bytes")
     return meta, sections
+
+
+def build_from(out_js, out_json, global_name, max_n, blocks, scans, corpus, head,
+               comment, confidence_note, notes, floor=0.60, generator="tools/", extras=()):
+    """Assemble a bundle from blocks already read, numbered and named.
+
+    `blocks` is [{n, to, text, from, extra}] in printed order; `scans` the metadata of
+    the copies read; `corpus` the 12-letter sequences of those copies.
+    """
+    merged, origin, to_of, extra = {}, {}, {}, {}
+    for b in blocks:
+        merged[b["n"]] = b["text"]
+        origin[b["n"]] = b["from"]
+        to_of[b["n"]] = b["to"]
+        if b.get("extra"):
+            extra[b["n"]] = b["extra"]
+    return _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json,
+                   global_name, head, comment, confidence_note, floor, notes, generator,
+                   extras, scans)

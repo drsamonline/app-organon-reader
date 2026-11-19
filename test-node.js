@@ -480,7 +480,9 @@ t("a printed range is carried as a range, and every number it covers is covered"
     const covered = new Set();
     for (const s of book.sections) {
       assert.ok(s.to >= s.n, "§" + s.n + " ends before it starts (" + s.to + ")");
-      assert.ok(s.to - s.n <= 40, "§" + s.n + " claims an impossible range to " + s.to);
+      // the widest printed range is the 1819 list's §182–228 (46 numbers), whose start is
+      // restored from the entry beside it; anything wider is a parser fault
+      assert.ok(s.to - s.n <= 55, "§" + s.n + " claims an impossible range to " + s.to);
       for (let k = s.n; k <= s.to; k++) covered.add(k);
     }
     const expected = [];
@@ -499,7 +501,20 @@ t("the second edition is Hahnemann's German of 1819, and says it has no English 
   assert.ok(/1819/.test(BOOK2.meta.edition), BOOK2.meta.edition);
   assert.strictEqual(BOOK2.meta.english_translation_exists, false);
   assert.ok(index2.count > 80, "expected most of the 1819 blocks, got " + index2.count);
-  assert.ok(BOOK2.meta.numbered_paragraphs_carried > 150);
+  assert.ok(BOOK2.meta.numbered_paragraphs_carried > 270,
+    "expected ~280 of 318 numbered paragraphs, got " + BOOK2.meta.numbered_paragraphs_carried);
+  assert.strictEqual(BOOK2.meta.part, "Inhaltsanzeige",
+    "the 1819 German bundle carries the printed Inhaltsanzeige, and must say so");
+  assert.ok(BOOK2.meta.notes.some(n => /Inhaltsanzeige/.test(n)),
+    "the notes must say that the paragraphs themselves are not carried");
+  for (const s of BOOK2.sections) {
+    for (const r of s.numbers_from || []) {
+      assert.ok(r.from && Object.keys(r).length >= 2,
+        "§" + s.n + " restores a number and must record where it came from");
+    }
+  }
+  assert.strictEqual(BOOK2.meta.numbered_from_second_copy, 0,
+    "the second copy settled no number today; the figure is recorded, not assumed");
   assert.ok(/Public domain/i.test(BOOK2.meta.licence));
   for (const s of BOOK2.meta.scans) {
     assert.ok(/second edition/i.test(s.edition), s.label + " must be the second edition");

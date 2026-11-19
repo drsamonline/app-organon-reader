@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.6.1 — 2026-11-19
+
+**The 1819 German now says what it is, and carries 280 of 318 numbered paragraphs instead of
+176.**
+
+- **The second edition's German bundle is its printed *Inhaltsanzeige*, and now says so.**
+  `tools/build-organon2.py` was reading the list of numbered rubrics the 1819 book sets
+  before the Einleitung and presenting it as the paragraphs. The paragraphs are printed
+  later, and both surviving scans read the body's pages across the fold — a paragraph's tail
+  lands inside the next one — so they are not carried. Title, notes, the reader's book blurb
+  and `data/README.md` now name the part correctly.
+- **More of the numbering recovered.** §110–119, §182–228 and §245–250 came back: an entry
+  whose range lost one end to OCR keeps the end that was printed, and the lost end is taken
+  from the entry beside it only where Brunnow's French contents list prints every number the
+  restored range would cover. Each restored block records it in `numbers_from`.
+- **A tolerant reader for printed number lines** (`tools/scanlib.py`): `J.06` is 106, `j54`
+  is 154, `l5g` is 159, a full stop printed inside a number is folded away, junk between a
+  number and its dash no longer hides the range. The second 1819 copy is now read for its
+  numbers as well as its words.
+- **Gaps named, not filled.** 38 numbers remain unreadable in both copies — `§8–11`, `§13`,
+  `§14`, `§42–44`, `§47`, `§67`, `§68`, `§72`, `§78`, `§251–257`, `§259–274`, `§311` — and
+  are listed in `meta.missing` and shown as gaps.
+- The machine translation of the second edition is regenerated from the new German text and
+  says that what it translates is the Inhaltsanzeige.
+
 ## 1.6.0 — 2026-11-19
 
 **The shelf is complete: the second and third editions join it, in the languages they were
