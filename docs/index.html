@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Organon Reader — the Organon of Medicine, offline</title>
-<meta name="description" content="Hahnemann's Organon of Medicine, readable offline with search and bookmarks. Editions in the Boericke 1922 and Dudgeon 1849 translations. A reader, not an interpretation.">
+<meta name="description" content="Hahnemann's Organon of Medicine, readable offline with search and bookmarks. Four English editions — Wheeler 1913, Devrient 1833, Dudgeon 1849 and Boericke 1922. A reader, not an interpretation.">
 <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f6f2" media="(prefers-color-scheme: light)">
 <meta property="og:title" content="Organon Reader — the Organon of Medicine, offline">
@@ -93,9 +93,11 @@
               border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   .editions div { padding: 16px 10px; text-align: center; }
   .editions div + div { border-left: 1px solid var(--line); }
+  .editions div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .editions div:nth-child(3) { border-left: 0; }
   .editions b { display: block; font-size: 17px; font-weight: 600; }
   .editions span { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
-  @media (max-width: 560px) { .editions { grid-template-columns: 1fr; } .editions div + div { border-left: 0; border-top: 1px solid var(--line); } }
+  @media (max-width: 560px) { .editions { grid-template-columns: 1fr; } .editions div + div { border-left: 0; border-top: 1px solid var(--line); } .editions div:nth-child(3) { border-top: 1px solid var(--line); } }
 
   section { padding: 62px 0 0; }
   h2 { font-family: var(--mono); font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
@@ -173,9 +175,9 @@ a.btn:not(.ghost){color:#ffffff!important}     /* 3.48 -> 5.05 on #8a6a1f */
     </figure>
 
     <h1>Organon <i>of</i> Medicine</h1>
-    <p class="under">The Organon of Medicine in the 1922 Boericke translation — readable offline,
+    <p class="under">The Organon of Medicine in four English editions — 1810 to 1842 — readable offline,
     on any device you already own.</p>
-    <div class="rule"><span>Boericke translation</span></div>
+    <div class="rule"><span>Four English editions</span></div>
 
     <div class="cta">
       <a class="btn" href="play/">Open the reader →</a>
@@ -183,8 +185,10 @@ a.btn:not(.ghost){color:#ffffff!important}     /* 3.48 -> 5.05 on #8a6a1f */
     </div>
 
     <div class="editions">
-      <div><b>Sixth edition</b><span>Boericke, 1922</span></div>
+      <div><b>First edition</b><span>Wheeler, 1913</span></div>
+      <div><b>Fourth edition</b><span>Devrient, 1833</span></div>
       <div><b>Fifth edition</b><span>Dudgeon, 1849</span></div>
+      <div><b>Sixth edition</b><span>Boericke, 1922</span></div>
     </div>
   </header>
 
@@ -211,10 +215,11 @@ a.btn:not(.ghost){color:#ffffff!important}     /* 3.48 -> 5.05 on #8a6a1f */
 
   <section id="text">
     <h2>Where the text comes from</h2>
-    <p style="margin:0;max-width:64ch;font-size:17px">Hahnemann died in 1843 and both
-    translations were published long before any of this existed, so the text is public domain. Each
-    edition in the reader was built from scans of a printed translation, merged into one text — and
-    where the scans disagreed, that is a matter for the source, not for the app.</p>
+    <p style="margin:0;max-width:64ch;font-size:17px">Hahnemann died in 1843 and every
+    translation used here was published long before any of this existed, so the text is public domain.
+    Each edition in the reader was built from scans of a printed translation — the sixth and fifth from
+    a transcription checked section by section against three scans, the first and fourth from the scans
+    themselves — and where the scans disagreed, that is a matter for the source, not for the app.</p>
   </section>
 
   <section id="caveat">

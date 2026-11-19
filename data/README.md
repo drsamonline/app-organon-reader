@@ -71,7 +71,7 @@ SHA-256 of every OCR file used, and the edition evidence line, are recorded in
     python3 tools/parse-homeoint.py   # -> homeoint_sections.json (291, sixth edition only)
     python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 29 assertions
+    node test-node.js                 # the suite: 40 assertions
 
 ## The fifth edition, added 2026-11-03
 
@@ -111,3 +111,99 @@ paragraphs against the sixth's 291. §292–§294 (the mesmerism material) are a
 sixth. 74 sections are worded differently. §89's body carries the transcription's own
 editorial marker "(Added to the Sixth Edition)" — left verbatim rather than silently edited,
 and recorded in the bundle's `meta.notes`.
+
+## The first and fourth editions, added 2026-11-19
+
+Six editions were written; four were ever translated into English. The two missing ones are
+not missing from this repository by oversight:
+
+| edition | English translation | in the reader |
+|---|---|---|
+| First (1810) | C. E. Wheeler, Everyman's Library, 1913 | **yes** — `tools/build-organon1.py` |
+| Second (1819) | **none exists** | no — there is no English text to carry |
+| Third (1824) | **none exists** | no — there is no English text to carry |
+| Fourth (1829) | Charles H. Devrient, 1833 (the first English Organon) | **yes** — `tools/build-organon4.py` |
+| Fifth (1833) | R. E. Dudgeon, 1849 | yes (above) |
+| Sixth (1842) | William Boericke, 1922 | yes (above) |
+
+The second and third editions were translated into French (Brunnow, 1824) and other
+languages; no English version of either has ever been published. Nothing was translated,
+paraphrased or generated to stand in for them, and the reader does not offer them.
+
+### The first edition — Wheeler, 1913
+
+| | |
+|---|---|
+| Work | *Organon of the Rational Art of Healing*, first edition (1810) |
+| Translation | C. E. Wheeler, M.D. (Everyman's Library, 1913) |
+| Licence of the TEXT | Public domain — Hahnemann died 1843; Wheeler 1913 |
+| Carried | **256 of 271** aphorisms |
+| Corroboration | median **1.000**, minimum **0.934**, every carried section above the 0.60 floor |
+
+**Sources.** There is no transcription of this translation, so the reading text is OCR of a
+printed copy and the second copy is the check:
+
+| scan | Internet Archive item | role |
+|---|---|---|
+| `Wheeler-1913` | `organonofrationa00hahn` (Boston University copy) | reading text and corpus |
+| `Wellcome-1913` | `b24877529` (Wellcome copy of the same printing) | corpus, and §1's mark |
+
+**The edition guard.** A scan is admitted only if its front matter declares *translated from
+the first edition* and names Wheeler, and never names Boericke or Devrient. Dudgeon's name is
+**not** disqualifying: Part II of the 1913 volume is his translation of four of Hahnemann's
+essays, so the guard keys on the Organon's translator, not on every name in the book.
+
+**Why 15 sections are missing.** Wheeler himself printed no §158 and no §160 (he misnumbered
+158–160), so those gaps are the translation's, not OCR's. The other thirteen (§8, §11, §17,
+§23, §32, §33, §61, §101, §106, §110, §111, §166, §181) are section marks the scans do not
+print legibly; each is named in the section list and none is renumbered or guessed. §1 carries
+no mark of its own in the primary copy — it is the block under the book's heading — so it is
+carried only because the second copy does print its number, and the primary copy supplies the
+cleaner text.
+
+### The fourth edition — Devrient, 1833
+
+| | |
+|---|---|
+| Work | *Organon of the Healing Art*, fourth edition (1829) |
+| Translation | Charles H. Devrient, with notes by Samuel Stratten (1833) |
+| Licence of the TEXT | Public domain — Hahnemann died 1843; Devrient 1833 |
+| Carried | **241 of 292** aphorisms |
+| Corroboration | median **1.000**, minimum **0.962**, every carried section above the 0.60 floor |
+
+**Sources — four scans of the 1833 printing:**
+
+| scan | Internet Archive item | role |
+|---|---|---|
+| `Devrient-Dublin-1833` | `bub_gb_EnEFAAAAQAAJ` | reading text and corpus |
+| `Devrient-Wellcome-1833` | `homoeopathicmedi00hahn` | reading text and corpus |
+| `Devrient-Oxford-1833` | `homopathicmedic00devrgoog` | corpus only — its Roman numerals are unreadable |
+| `Devrient-Wellcome-2` | `b33290180` | corpus only — its Roman numerals are unreadable |
+
+**The edition guard.** Devrient's title page reads "TRANSLATED FROM THE GERMAN OF S.
+HAHNEMANN, BY CHARLES H. DEVRIENT" and **does not name the German edition**, so the guard is:
+the scan must name Devrient and Stratten, must name neither Boericke nor Dudgeon, and must
+read section marks up to the end of a **292**-paragraph book. A 294-paragraph fifth edition or
+a 291-paragraph sixth cannot pass that last test.
+
+**Why 51 sections are missing.** The book numbers its paragraphs in Roman numerals and OCR
+loses numerals silently (`§ LXXXIL` for LXXXII, `§ 111` for III). A section is carried only
+where a mark is legible, and its text is cut at the next mark the *same* scan reads, so a lost
+numeral shortens the book rather than letting two paragraphs run together. The list of lost
+numbers is in the bundle's `meta.missing`.
+
+**Notes.** Stratten's editorial notes are printed among the paragraphs in the scans and are
+not separated here; the bundle carries the running text, and the reader says so.
+
+### Rebuilding these two
+
+The OCR files are not committed (they are 400–600 KB each). Fetch them from the Internet
+Archive items named above, name them as the scripts expect, and:
+
+    ORGANON_SRC=. python3 tools/build-organon1.py   # -> docs/organon1-data.js
+    ORGANON_SRC=. python3 tools/build-organon4.py   # -> docs/organon4-data.js
+    node test-node.js
+
+Each bundle records, in `meta.scans`, the SHA-256 and byte count of every OCR file it used,
+and in `meta.verification` the median and minimum coverage it achieved, so the figures above
+can be checked rather than taken on trust.

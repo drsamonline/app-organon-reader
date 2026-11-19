@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Organon Reader — the 1922 Boericke translation, offline</title>
-<meta name="description" content="An offline reader for the Organon of Medicine, sixth edition, in the 1922 English translation — every section listed, next/previous, full-text search, bookmarks and notes, no network.">
+<title>Organon Reader — four editions, offline</title>
+<meta name="description" content="An offline reader for the Organon of Medicine in four English editions — first (Wheeler 1913), fourth (Devrient 1833), fifth (Dudgeon 1849) and sixth (Boericke 1922) — with section lists, next/previous, full-text search, bookmarks and notes, no network.">
 <style>
   /* ---- the same page as the landing: gold on near-black, warm paper in light ---- */
   :root{
@@ -125,13 +125,15 @@
 <header>
   <div>
     <h1>Organon Reader</h1>
-    <div class="sub" id="sub">Organon of Medicine · Boericke 1922 and Dudgeon 1849 · offline, no account</div>
+    <div class="sub" id="sub">Organon of Medicine · 1810, 1829, 1833 and 1842 · offline, no account</div>
   </div>
   <div style="flex:1"></div>
   <label class="edlab" for="edition">Edition</label>
   <select id="edition" aria-label="Choose the edition to read">
-    <option value="sixth">Sixth — Boericke, 1922</option>
+    <option value="first">First — Wheeler, 1913</option>
+    <option value="fourth">Fourth — Devrient, 1833</option>
     <option value="fifth">Fifth — Dudgeon, 1849</option>
+    <option value="sixth">Sixth — Boericke, 1922</option>
   </select>
   <input id="q" type="search" placeholder="Search the text — try &ldquo;vital force&rdquo;" aria-label="Search the text">
   <button id="go">Search</button>
@@ -169,26 +171,31 @@
 </main>
 
 <footer id="foot">
-  Text: public domain (Hahnemann d. 1843; Boericke translation 1922), read from three scans of the
-  sixth edition and merged. This reader presents the text and keeps your marks — it does not interpret or advise.
+  Text: public domain (Hahnemann d. 1843; Wheeler 1913, Devrient 1833, Dudgeon 1849, Boericke 1922),
+  read from scans of each edition's own printing. This reader presents the text and keeps your marks — it does not interpret or advise.
   Use ← and → to move between sections.
-  <div style="margin-top:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--mut)">design 2026-11-05 · reader v2</div>
+  <div style="margin-top:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--mut)">design 2026-11-05 · reader v3 · four editions</div>
 </footer>
 
 <script src="../organon-data.js"></script>
 <script src="../organon5-data.js"></script>
+<script src="../organon4-data.js"></script>
+<script src="../organon1-data.js"></script>
 <script src="../reader.js"></script>
 <script>
 (function () {
   "use strict";
   var R = window.OrganonReader;
 
-  /* ---- two editions, both bundled, both public domain ----
-   * They are different books, not two renderings of one: 74 sections word the doctrine
-   * differently and three exist only in the fifth. Each keeps its own bookmarks and notes,
-   * because a note on "§153" means a different paragraph in each. */
+  /* ---- four editions, all bundled, all public domain ----
+   * They are different books, not four renderings of one: the fifth carries three
+   * paragraphs the sixth does not and words 74 of them differently; the first and the
+   * fourth are earlier stages of the doctrine, 271 and 292 paragraphs long. Each keeps
+   * its own bookmarks and notes, because a note on "§153" means a different paragraph
+   * in each. */
   var EDITIONS = {
     sixth: {
+      name: "sixth",
       book: window.ORGANON,
       store: "organon-reader:v1",
       sub: "Organon of Medicine, 6th edition \u00b7 Boericke translation, 1922 \u00b7 offline, no account",
@@ -196,26 +203,53 @@
              "sixth edition and merged."
     },
     fifth: {
+      name: "fifth",
       book: window.ORGANON5,
       store: "organon-reader:fifth:v1",
       sub: "Organon of Medicine, 5th edition \u00b7 Dudgeon translation, 1849 \u00b7 offline, no account",
       blurb: "Text: public domain (Hahnemann d. 1843; Dudgeon translation 1849), corroborated against three scans " +
              "of the fifth edition. This edition runs to 294 numbered paragraphs, three more than the sixth."
+    },
+    fourth: {
+      name: "fourth",
+      book: window.ORGANON4,
+      store: "organon-reader:fourth:v1",
+      sub: "Organon of the Healing Art, 4th edition \u00b7 Devrient translation, 1833 \u00b7 offline, no account",
+      blurb: "Text: public domain (Hahnemann d. 1843; Devrient translation 1833, the first English Organon), read " +
+             "from four scans of the 1833 printing. It runs to 292 paragraphs and is the first edition to carry " +
+             "the chronic miasms; Roman numerals lost in the scans leave the gaps named, never filled."
+    },
+    first: {
+      name: "first",
+      book: window.ORGANON1,
+      store: "organon-reader:first:v1",
+      sub: "Organon of the Rational Art of Healing, 1st edition \u00b7 Wheeler translation, 1913 \u00b7 offline, no account",
+      blurb: "Text: public domain (Hahnemann d. 1843; Wheeler translation 1913), read from two scans of the 1913 " +
+             "Everyman's printing. Wheeler's is the only English translation of the first edition; it omits " +
+             "Hahnemann's Introduction and most of his footnotes, and this reader does not fill that gap."
     }
   };
 
-  /* Where the editions part company, computed once from both bundles. */
-  var DIFF = (function () {
-    var a = {}, b = {}, out = { differs: {}, onlyFifth: {}, onlySixth: {} };
-    (EDITIONS.sixth.book.sections || []).forEach(function (s) { a[s.n] = s.text; });
-    (EDITIONS.fifth.book.sections || []).forEach(function (s) { b[s.n] = s.text; });
-    Object.keys(b).forEach(function (n) {
-      if (a[n] == null) out.onlyFifth[n] = true;
+  /* Each edition is compared with the nearest one that can be read beside it: the sixth
+   * with the fifth, and the earlier books with the sixth. */
+  var REF = { first: "sixth", fourth: "sixth", fifth: "sixth", sixth: "fifth" };
+  var DIFF_CACHE = {};
+
+  /* Where a pair of editions part company, computed once from both bundles. */
+  function diffWith(key) {
+    var ref = REF[key] || "sixth";
+    var id = key + ">" + ref;
+    if (DIFF_CACHE[id]) return DIFF_CACHE[id];
+    var a = {}, b = {}, out = { differs: {}, onlyHere: {}, onlyThere: {} };
+    (EDITIONS[key].book.sections || []).forEach(function (s) { a[s.n] = s.text; });
+    (EDITIONS[ref].book.sections || []).forEach(function (s) { b[s.n] = s.text; });
+    Object.keys(a).forEach(function (n) {
+      if (b[n] == null) out.onlyHere[n] = true;
       else if (R.norm(a[n]) !== R.norm(b[n])) out.differs[n] = true;
     });
-    Object.keys(a).forEach(function (n) { if (b[n] == null) out.onlySixth[n] = true; });
-    return out;
-  })();
+    Object.keys(b).forEach(function (n) { if (a[n] == null) out.onlyThere[n] = true; });
+    return (DIFF_CACHE[id] = out);
+  }
 
   var BOOK, index, nums, missing, store, state = R.empty(), KEY = "sixth";
 
@@ -319,14 +353,11 @@
   }
 
   function chip(n) {
-    if (KEY === "fifth") {
-      if (DIFF.onlyFifth[n]) return '<div><span class="edchip">only in the fifth edition</span></div>';
-      if (DIFF.differs[n]) return '<div><span class="edchip">wording differs from the sixth edition</span></div>';
-      return '<div><span class="edchip same">same wording in both editions</span></div>';
-    }
-    if (DIFF.onlySixth[n]) return '<div><span class="edchip">only in the sixth edition</span></div>';
-    if (DIFF.differs[n]) return '<div><span class="edchip">wording differs from the fifth edition</span></div>';
-    return '<div><span class="edchip same">same wording in both editions</span></div>';
+    var d = diffWith(KEY), here = EDITIONS[KEY].name, there = EDITIONS[REF[KEY] || "sixth"].name;
+    if (d.onlyHere[n]) return '<div><span class="edchip">only in the ' + here + ' edition</span></div>';
+    if (d.onlyThere[n]) return '<div><span class="edchip">not carried here — only in the ' + there + ' edition</span></div>';
+    if (d.differs[n]) return '<div><span class="edchip">wording differs from the ' + there + ' edition</span></div>';
+    return '<div><span class="edchip same">same wording as the ' + there + ' edition</span></div>';
   }
 
   function show(n) {

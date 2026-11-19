@@ -14,14 +14,27 @@ def suite_numbers():
     m = re.search(r"(\d+)/(\d+) assertions passed", out)
     return (m.group(1), m.group(2)) if m else ("?", "?")
 
-def sections():
-    js = open("docs/organon-data.js", encoding="utf-8").read()
+def bundle(path):
     import json
-    data = json.loads(js[js.index("return ") + 7: js.rindex(";\n});")])
+    js = open(path, encoding="utf-8").read()
+    return json.loads(js[js.index("return ") + 7: js.rindex(";\n});")])
+
+
+def sections():
+    data = bundle("docs/organon-data.js")
     return data["meta"]["recovered"], data["meta"]["total_in_book"]
+
+
+def editions():
+    """One badge for the whole shelf: how many books, and how long each one is."""
+    paths = ["docs/organon1-data.js", "docs/organon4-data.js",
+             "docs/organon5-data.js", "docs/organon-data.js"]
+    totals = [bundle(p)["meta"]["total_in_book"] for p in paths if os.path.exists(p)]
+    return len(totals), "+".join(str(n) for n in totals)
 
 PASSED, TOTAL = suite_numbers()
 GOT, OF = sections()
+BOOKS, LENGTHS = editions()
 
 W = 118
 BADGES = [
@@ -29,6 +42,7 @@ BADGES = [
     ("tests",     f"{PASSED}/{TOTAL}", "#2ea043"),
     ("offline",   "0 requests",    "#2ea043"),
     ("deps",      "0",             "#2ea043"),
+    ("editions",  f"{BOOKS} · {LENGTHS}", "#b08968"),
     ("sections",  f"{GOT}/{OF}",   "#b08968"),
     ("licence",   "PolyForm NC",   "#4c6ef5"),
 ]

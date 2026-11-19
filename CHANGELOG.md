@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.5.0 — 2026-11-19
+
+**Four editions instead of two.** The first edition (1810) and the fourth (1829) join the
+fifth and sixth, in the only English translations either has ever had.
+
+- **The first edition — Wheeler, 1913** (`tools/build-organon1.py`): 256 of the book's 271
+  aphorisms, read from two scans of the 1913 Everyman's printing. Wheeler printed no §158 and
+  no §160 and omitted Hahnemann's Introduction and most of his footnotes; those omissions are
+  his, and the reader does not fill them. Median corroboration 1.000, minimum 0.934.
+- **The fourth edition — Devrient, 1833** (`tools/build-organon4.py`): 241 of 292 aphorisms,
+  read from four scans of the 1833 printing — the first English Organon, and the edition that
+  first carries the chronic miasms. The book numbers its paragraphs in Roman numerals and OCR
+  loses some; where a numeral is lost the section is named as missing, never merged with its
+  neighbour. Median corroboration 1.000, minimum 0.962.
+- **The second and third editions are not offered, because no English translation of either
+  exists.** They were translated into French and other languages, never into English; nothing
+  was translated, paraphrased or generated to stand in for them.
+- **A new method note:** these two bundles have no transcription to check against, so their
+  verification is scan against scan. That catches OCR damage, not a wrong edition, and both
+  bundles say so in `meta.verification.note`. Each records the SHA-256 of every scan it used.
+- **The edition chips are generalised.** Every edition is now read beside a reference edition
+  (the sixth for the earlier books, the fifth for the sixth) and says *only here*, *only
+  there*, *wording differs* or *same wording* against it.
+- The suite went from 35 to 40 assertions; the sixth- and fifth-edition assertions are
+  unchanged.
+
 ## 1.4.0 — 2026-11-03
 
 **Two editions, and the reader can tell them apart.** The fifth edition joins the sixth

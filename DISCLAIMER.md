@@ -7,7 +7,7 @@ Changes: Initial version.
 
 ## What this app is
 
-**Organon Reader** presents the *Organon of Medicine* in two editions — Boericke's translation of the sixth edition (1922) and Dudgeon's translation of the fifth (1849) — searchable and readable offline.
+**Organon Reader** presents the *Organon of Medicine* in four English editions — Wheeler's translation of the first edition (1913), Devrient's of the fourth (1833), Dudgeon's of the fifth (1849) and Boericke's of the sixth (1922) — searchable and readable offline.
 
 It is a **reference and reading tool**. It is not a medical device, and it does not diagnose, prescribe, treat or cure any condition.
 
@@ -17,9 +17,13 @@ Every rubric, remedy, keynote, relationship or passage shown here is **quoted fr
 
 No doctor–patient relationship arises from using this app.
 
-The two editions are different books, and the app does not merge them. Where they word a section differently, both readings are available; neither is presented as the better one.
+The editions are different books, and the app does not merge them. Where they word a section differently, each reading is available; none is presented as the better one.
 
 ## Sources and their limits
+
+First edition: *Organon of the Rational Art of Healing*, 1810, translated by C. E. Wheeler, 1913 — public domain. Third-party sources omit Hahnemann's Introduction and most of his footnotes, and so does this app.
+
+Fourth edition: *Organon of the Healing Art*, 1829, translated by Charles H. Devrient, 1833 — public domain. Paragraph numbers lost in the scanned printing are named as missing, never filled.
 
 Sixth edition: *Organon of Medicine*, completed 1842, translated by William Boericke, 1922 — public domain.
 

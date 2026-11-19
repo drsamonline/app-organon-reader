@@ -373,9 +373,9 @@ t("the fifth edition is searchable on its own terms", () => {
   assert.ok(res.results[0].n > 0);
 });
 
-t("both editions are bundled and neither is fetched", () => {
+t("all four editions are bundled and none is fetched", () => {
   const html = fs.readFileSync(appPage, "utf8");
-  for (const f of ["organon-data.js", "organon5-data.js"]) {
+  for (const f of ["organon-data.js", "organon5-data.js", "organon4-data.js", "organon1-data.js"]) {
     assert.ok(html.includes(f), "the page must load " + f);
     assert.ok(fs.existsSync(path.join(docs, f)), "missing bundled file: " + f);
   }
@@ -385,8 +385,79 @@ t("both editions are bundled and neither is fetched", () => {
 t("each edition keeps its own bookmarks, so a note cannot land in the wrong book", () => {
   const html = fs.readFileSync(appPage, "utf8");
   const keys = [...html.matchAll(/store:\s*"([^"]+)"/g)].map(m => m[1]);
-  assert.strictEqual(keys.length, 2, "expected one store key per edition, got " + JSON.stringify(keys));
-  assert.notStrictEqual(keys[0], keys[1], "the two editions must not share a store key");
+  assert.strictEqual(keys.length, 4, "expected one store key per edition, got " + JSON.stringify(keys));
+  assert.strictEqual(new Set(keys).size, keys.length, "the editions must not share a store key");
+});
+
+/* ---------- the first and the fourth edition ---------- */
+const BOOK1 = require("./docs/organon1-data.js");
+const BOOK4 = require("./docs/organon4-data.js");
+const index1 = R.createIndex(BOOK1.sections);
+const index4 = R.createIndex(BOOK4.sections);
+
+function namedGapsAccurately(book, total) {
+  const carried = new Set(book.sections.map(s => s.n));
+  const expected = [];
+  for (let n = 1; n <= total; n++) if (!carried.has(n)) expected.push(n);
+  assert.deepStrictEqual(book.meta.missing, expected,
+    "the missing list must be exactly the numbers the bundle does not carry");
+  assert.strictEqual(book.meta.recovered, book.sections.length);
+}
+
+t("the first edition is Wheeler's 1913 translation, and says which sections it lost", () => {
+  assert.strictEqual(BOOK1.meta.total_in_book, 271);
+  assert.ok(/first edition/i.test(BOOK1.meta.edition), BOOK1.meta.edition);
+  assert.ok(/Wheeler/.test(BOOK1.meta.translator), BOOK1.meta.translator);
+  assert.ok(/Public domain/i.test(BOOK1.meta.licence));
+  assert.ok(index1.count > 200, "expected most of the 271 aphorisms, got " + index1.count);
+  namedGapsAccurately(BOOK1, 271);
+  const v = BOOK1.meta.verification;
+  assert.ok(v && v.median >= 0.9 && v.min >= 0.6, "corroboration must hold: " + JSON.stringify(v));
+  assert.strictEqual(v.sections_checked, index1.count);
+  const labels = BOOK1.meta.scans.map(s => s.label);
+  for (const s of BOOK1.sections) {
+    assert.ok(labels.includes(s.from), "§" + s.n + " has no recorded source (" + s.from + ")");
+    assert.ok(s.corroboration >= 0.6, "§" + s.n + " was accepted below the floor");
+  }
+});
+
+t("the first edition never claims to be another edition or translation", () => {
+  for (const s of BOOK1.meta.scans) {
+    assert.ok(/first edition/i.test(s.edition), s.label + " must be the first edition");
+    assert.ok(/Wheeler/i.test(s.edition), s.label + " must be Wheeler's translation");
+    assert.ok(!/Boericke|Dudgeon|Devrient/i.test(s.edition), s.label + " must not be another translation");
+  }
+});
+
+t("the fourth edition is Devrient's 1833 translation, 292 paragraphs with gaps named", () => {
+  assert.strictEqual(BOOK4.meta.total_in_book, 292);
+  assert.ok(/fourth edition/i.test(BOOK4.meta.edition), BOOK4.meta.edition);
+  assert.ok(/Devrient/.test(BOOK4.meta.translator), BOOK4.meta.translator);
+  assert.ok(index4.count > 200, "expected most of the 292 aphorisms, got " + index4.count);
+  namedGapsAccurately(BOOK4, 292);
+  const v = BOOK4.meta.verification;
+  assert.ok(v && v.median >= 0.9 && v.min >= 0.6, "corroboration must hold: " + JSON.stringify(v));
+  const labels = BOOK4.meta.scans.map(s => s.label);
+  for (const s of BOOK4.sections) {
+    assert.ok(labels.includes(s.from), "§" + s.n + " has no recorded source (" + s.from + ")");
+    assert.ok(s.corroboration >= 0.6, "§" + s.n + " was accepted below the floor");
+  }
+  for (const s of BOOK4.meta.scans) {
+    assert.ok(/fourth edition/i.test(s.edition), s.label + " must be the fourth edition");
+    assert.ok(/Devrient/i.test(s.edition), s.label + " must be Devrient's translation");
+  }
+});
+
+t("the four editions are four different books, and none borrows another's text", () => {
+  const firsts = {};
+  BOOK1.sections.forEach(s => { firsts[s.n] = R.norm(s.text); });
+  BOOK4.sections.forEach(s => { firsts[s.n] = R.norm(s.text); });
+  let same = 0;
+  BOOK.sections.forEach(s => { if (firsts[s.n] === R.norm(s.text)) same++; });
+  assert.ok(same < 40, "the first/fourth editions must not be the sixth edition's text: " + same + " identical sections");
+  assert.notStrictEqual(BOOK1.meta.total_in_book, BOOK4.meta.total_in_book);
+  assert.ok(R.search(index1, "vital force").ok);
+  assert.ok(R.search(index4, "miasm").ok, "the fourth edition carries the chronic miasms");
 });
 
 console.log("\n" + pass + "/" + (pass + fail) + " assertions passed");

@@ -7,7 +7,7 @@ Changes: Initial version.
 
 ## What this app is
 
-An offline reader for the Organon of Medicine, sixth edition, in the 1922 Boericke translation — full-text search, bookmarks and notes, no network.
+An offline reader for the Organon of Medicine in four English editions — the first (Wheeler, 1913), fourth (Devrient, 1833), fifth (Dudgeon, 1849) and sixth (Boericke, 1922) — with full-text search, bookmarks and notes, no network.
 
 It runs on your own device. There is no account, no server and no sign-in.
 
