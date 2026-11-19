@@ -373,9 +373,11 @@ t("the fifth edition is searchable on its own terms", () => {
   assert.ok(res.results[0].n > 0);
 });
 
-t("all four editions are bundled and none is fetched", () => {
+t("all nine books are bundled and none is fetched", () => {
   const html = fs.readFileSync(appPage, "utf8");
-  for (const f of ["organon-data.js", "organon5-data.js", "organon4-data.js", "organon1-data.js"]) {
+  for (const f of ["organon-data.js", "organon5-data.js", "organon4-data.js", "organon1-data.js",
+                   "organon2-data.js", "organon3-data.js", "organon2-fr-data.js",
+                   "organon2-en-mt-data.js", "organon3-en-mt-data.js"]) {
     assert.ok(html.includes(f), "the page must load " + f);
     assert.ok(fs.existsSync(path.join(docs, f)), "missing bundled file: " + f);
   }
@@ -385,7 +387,7 @@ t("all four editions are bundled and none is fetched", () => {
 t("each edition keeps its own bookmarks, so a note cannot land in the wrong book", () => {
   const html = fs.readFileSync(appPage, "utf8");
   const keys = [...html.matchAll(/store:\s*"([^"]+)"/g)].map(m => m[1]);
-  assert.strictEqual(keys.length, 4, "expected one store key per edition, got " + JSON.stringify(keys));
+  assert.strictEqual(keys.length, 9, "expected one store key per edition, got " + JSON.stringify(keys));
   assert.strictEqual(new Set(keys).size, keys.length, "the editions must not share a store key");
 });
 
@@ -458,6 +460,111 @@ t("the four editions are four different books, and none borrows another's text",
   assert.notStrictEqual(BOOK1.meta.total_in_book, BOOK4.meta.total_in_book);
   assert.ok(R.search(index1, "vital force").ok);
   assert.ok(R.search(index4, "miasm").ok, "the fourth edition carries the chronic miasms");
+});
+
+/* ---------- the second and third editions, their French, and the machine translation ---------- */
+const BOOK2 = require("./docs/organon2-data.js");
+const BOOK3 = require("./docs/organon3-data.js");
+const BOOK2FR = require("./docs/organon2-fr-data.js");
+const BOOK2MT = require("./docs/organon2-en-mt-data.js");
+const BOOK3MT = require("./docs/organon3-en-mt-data.js");
+const index2 = R.createIndex(BOOK2.sections);
+const index3 = R.createIndex(BOOK3.sections);
+const index2fr = R.createIndex(BOOK2FR.sections);
+const index2mt = R.createIndex(BOOK2MT.sections);
+const index3mt = R.createIndex(BOOK3MT.sections);
+
+// the numbers a block stands for: §90–105 is one block covering sixteen numbers
+t("a printed range is carried as a range, and every number it covers is covered", () => {
+  for (const book of [BOOK2, BOOK3, BOOK2FR]) {
+    const covered = new Set();
+    for (const s of book.sections) {
+      assert.ok(s.to >= s.n, "§" + s.n + " ends before it starts (" + s.to + ")");
+      assert.ok(s.to - s.n <= 40, "§" + s.n + " claims an impossible range to " + s.to);
+      for (let k = s.n; k <= s.to; k++) covered.add(k);
+    }
+    const expected = [];
+    for (let n = 1; n <= book.meta.total_in_book; n++) if (!covered.has(n)) expected.push(n);
+    assert.deepStrictEqual(book.meta.missing, expected,
+      book.meta.edition + ": the missing list must be exactly the numbers no block covers");
+    assert.strictEqual(book.meta.blocks, book.sections.length);
+    assert.strictEqual(book.meta.numbered_paragraphs_carried, covered.size);
+  }
+});
+
+t("the second edition is Hahnemann's German of 1819, and says it has no English translation", () => {
+  assert.strictEqual(BOOK2.meta.total_in_book, 318);
+  assert.strictEqual(BOOK2.meta.language, "de");
+  assert.ok(/second edition/i.test(BOOK2.meta.edition), BOOK2.meta.edition);
+  assert.ok(/1819/.test(BOOK2.meta.edition), BOOK2.meta.edition);
+  assert.strictEqual(BOOK2.meta.english_translation_exists, false);
+  assert.ok(index2.count > 80, "expected most of the 1819 blocks, got " + index2.count);
+  assert.ok(BOOK2.meta.numbered_paragraphs_carried > 150);
+  assert.ok(/Public domain/i.test(BOOK2.meta.licence));
+  for (const s of BOOK2.meta.scans) {
+    assert.ok(/second edition/i.test(s.edition), s.label + " must be the second edition");
+    assert.ok(!/Boericke|Dudgeon|Devrient/i.test(s.edition), s.label + " must not be a translation");
+  }
+});
+
+t("the third edition is Hahnemann's German of 1824 and reads nearly whole", () => {
+  assert.strictEqual(BOOK3.meta.total_in_book, 320);
+  assert.strictEqual(BOOK3.meta.language, "de");
+  assert.ok(/third edition/i.test(BOOK3.meta.edition), BOOK3.meta.edition);
+  assert.strictEqual(BOOK3.meta.english_translation_exists, false);
+  assert.ok(index3.count > 250, "expected nearly all 1824 blocks, got " + index3.count);
+  assert.ok(BOOK3.meta.numbered_paragraphs_carried >= 300,
+    "expected ~300 of 320 numbered paragraphs, got " + BOOK3.meta.numbered_paragraphs_carried);
+  assert.strictEqual(BOOK3.meta.scans.length, 2, "two copies of the 1824 printing");
+  for (const s of BOOK3.sections) {
+    assert.ok(s.corroboration >= 0.6, "§" + s.n + " was accepted below the floor");
+  }
+});
+
+t("the French is Brunnow's 1824 translation of the second edition, not generated text", () => {
+  assert.strictEqual(BOOK2FR.meta.total_in_book, 318);
+  assert.strictEqual(BOOK2FR.meta.language, "fr");
+  assert.ok(/Brunnow/.test(BOOK2FR.meta.translator), BOOK2FR.meta.translator);
+  assert.strictEqual(BOOK2FR.meta.machine_translation, null);
+  assert.ok(index2fr.count > 250, "expected nearly all the French blocks, got " + index2fr.count);
+  for (const s of BOOK2FR.sections) {
+    assert.ok(s.mt !== true, "§" + s.n + " must not be marked as machine text");
+  }
+});
+
+t("the machine translation is labelled generated everywhere, and is not the German", () => {
+  for (const [book, german, index] of [[BOOK2MT, BOOK2, index2mt], [BOOK3MT, BOOK3, index3mt]]) {
+    assert.ok(book.meta.machine_translation && book.meta.machine_translation.generated === true,
+      "the bundle must declare itself machine-generated");
+    assert.ok(/Google Translate/.test(book.meta.machine_translation.engine));
+    assert.ok(book.meta.machine_translation.caveat.length > 80, "the caveat must say what it is");
+    assert.strictEqual(book.meta.machine_translation.source_bundle,
+      book === BOOK2MT ? "organon2-data.js" : "organon3-data.js",
+      "the machine bundle must name the German bundle it was made from");
+    assert.strictEqual(index.count, german.sections.length, "one translation per German block");
+    assert.deepStrictEqual(book.meta.missing, german.meta.missing, "it inherits the German gaps");
+    for (const s of book.sections) {
+      assert.strictEqual(s.mt, true, "§" + s.n + " must be flagged as machine text");
+      assert.ok(/machine translation/i.test(s.from), "§" + s.n + " must name its source as machine text");
+    }
+    const de = {};
+    german.sections.forEach(s => { de[s.n] = R.norm(s.text); });
+    let identical = 0;
+    book.sections.forEach(s => { if (de[s.n] === R.norm(s.text)) identical++; });
+    assert.ok(identical < 3, "the machine bundle must be translated, not copied: " + identical + " identical");
+    assert.ok(R.search(index, "the").ok, "the machine text must be searchable like any other");
+  }
+});
+
+t("the second and third editions are different books, and neither is the sixth", () => {
+  assert.notStrictEqual(BOOK2.meta.total_in_book, BOOK3.meta.total_in_book);
+  const six = {};
+  BOOK.sections.forEach(s => { six[s.n] = R.norm(s.text); });
+  let same = 0;
+  BOOK3.sections.forEach(s => { if (six[s.n] === R.norm(s.text)) same++; });
+  assert.strictEqual(same, 0, "German must not match the English sixth edition");
+  assert.notStrictEqual(BOOK2.sections[0].text, BOOK3.sections[0].text,
+    "the two German editions are separate readings from separate scans");
 });
 
 console.log("\n" + pass + "/" + (pass + fail) + " assertions passed");

@@ -24,7 +24,8 @@
   function createIndex(sections) {
     if (!Array.isArray(sections)) throw new TypeError("sections must be an array");
     var rows = sections.map(function (s) {
-      return { n: s.n, text: s.text, from: s.from || null,
+      return { n: s.n, to: (s.to == null ? s.n : s.to), text: s.text, from: s.from || null,
+               mt: !!s.mt,
                notes: s.notes || [],
                corroboration: (s.corroboration == null ? null : s.corroboration),
                diffWords: (s.diffWords == null ? null : s.diffWords),
@@ -98,12 +99,21 @@
   /* ---------- what the reader carries, said plainly ---------- */
   function coverage(meta) {
     var missing = (meta && meta.missing) || [];
+    var blocks = (meta && meta.blocks) || 0;
+    var paragraphs = (meta && meta.numbered_paragraphs_carried) || 0;
+    // A book that prints several paragraphs under one number is honest in blocks:
+    // "90 blocks covering 307 of 320 numbered paragraphs" is the truth, where "90 of
+    // 320 sections" would understate a book whose §90–105 is one sentence under five marks.
+    var carried = blocks
+      ? "This reader carries " + blocks + " printed blocks covering " + paragraphs +
+        " of the book's " + ((meta && meta.total_in_book) || 0) + " numbered paragraphs. "
+      : "This reader carries " + ((meta && meta.recovered) || 0) + " of the book's " +
+        ((meta && meta.total_in_book) || 0) + " sections. ";
     return {
       recovered: (meta && meta.recovered) || 0,
       total: (meta && meta.total_in_book) || 0,
       missing: missing,
-      sentence: "This reader carries " + ((meta && meta.recovered) || 0) + " of the book's " +
-        ((meta && meta.total_in_book) || 0) + " sections. " +
+      sentence: carried +
         (missing.length
           ? "The section marks for " + missing.length + " of them could not be read in the scanned text (" +
             missing.slice(0, 12).map(function (n) { return "§" + n; }).join(", ") +

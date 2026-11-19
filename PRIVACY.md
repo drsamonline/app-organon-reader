@@ -7,7 +7,7 @@ Changes: Initial version.
 
 ## What this app is
 
-An offline reader for the Organon of Medicine in four English editions — the first (Wheeler, 1913), fourth (Devrient, 1833), fifth (Dudgeon, 1849) and sixth (Boericke, 1922) — with full-text search, bookmarks and notes, no network.
+An offline reader for the Organon of Medicine: the four English editions — the first (Wheeler, 1913), fourth (Devrient, 1833), fifth (Dudgeon, 1849) and sixth (Boericke, 1922) — the second (1819) and third (1824) in Hahnemann's German, Brunnow's French of 1824, and a labelled machine translation of each German edition. Full-text search, bookmarks and notes, no network.
 
 It runs on your own device. There is no account, no server and no sign-in.
 
@@ -17,6 +17,10 @@ It runs on your own device. There is no account, no server and no sign-in.
 email capture.
 
 There is no code in it that reaches a host outside your device: no request carries anything you type or store.
+
+The machine translations of the second and third editions were made by the publisher, once, when the bundles
+were built. They are plain text inside the app, like every other edition. Reading them sends nothing, and no
+part of your reading is ever submitted anywhere for translation.
 
 ## What is stored on your device
 

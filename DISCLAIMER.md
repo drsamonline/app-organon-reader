@@ -7,7 +7,7 @@ Changes: Initial version.
 
 ## What this app is
 
-**Organon Reader** presents the *Organon of Medicine* in four English editions — Wheeler's translation of the first edition (1913), Devrient's of the fourth (1833), Dudgeon's of the fifth (1849) and Boericke's of the sixth (1922) — searchable and readable offline.
+**Organon Reader** presents the *Organon of Medicine* in the four English editions — Wheeler's translation of the first edition (1913), Devrient's of the fourth (1833), Dudgeon's of the fifth (1849) and Boericke's of the sixth (1922) — together with the second (1819) and third (1824) editions in Hahnemann's German, Brunnow's French of 1824, and a machine translation of each German edition. All of it is searchable and readable offline.
 
 It is a **reference and reading tool**. It is not a medical device, and it does not diagnose, prescribe, treat or cure any condition.
 
@@ -22,6 +22,14 @@ The editions are different books, and the app does not merge them. Where they wo
 ## Sources and their limits
 
 First edition: *Organon of the Rational Art of Healing*, 1810, translated by C. E. Wheeler, 1913 — public domain. Third-party sources omit Hahnemann's Introduction and most of his footnotes, and so does this app.
+
+Second edition: *Organon der Heilkunst*, 1819, in Hahnemann's German — public domain. No English translation of this edition has ever been published. The reader carries the German, Brunnow's French of 1824, and a **machine translation** that was generated when the bundle was built. The machine text is not Hahnemann's English, is labelled wherever it appears, and is not a substitute for the German printed beside it. The 1819 scan lost many margin numbers; those sections are named as missing, never guessed.
+
+Third edition: *Organon der Heilkunst*, 1824, in Hahnemann's German — public domain. Like the second, it has no published English translation; the same machine translation applies, and the German is the authority.
+
+Brunnow's French (1824) is carried as printed, not translated. Nothing generated appears in it.
+
+The reader does not fetch anything, at any time. The machine translations were made by the publisher before publication and ship as text inside the app; reading the app sends no data anywhere.
 
 Fourth edition: *Organon of the Healing Art*, 1829, translated by Charles H. Devrient, 1833 — public domain. Paragraph numbers lost in the scanned printing are named as missing, never filled.
 

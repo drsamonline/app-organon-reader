@@ -117,18 +117,22 @@ and recorded in the bundle's `meta.notes`.
 Six editions were written; four were ever translated into English. The two missing ones are
 not missing from this repository by oversight:
 
-| edition | English translation | in the reader |
+| edition | text carried | in the reader |
 |---|---|---|
-| First (1810) | C. E. Wheeler, Everyman's Library, 1913 | **yes** — `tools/build-organon1.py` |
-| Second (1819) | **none exists** | no — there is no English text to carry |
-| Third (1824) | **none exists** | no — there is no English text to carry |
-| Fourth (1829) | Charles H. Devrient, 1833 (the first English Organon) | **yes** — `tools/build-organon4.py` |
-| Fifth (1833) | R. E. Dudgeon, 1849 | yes (above) |
-| Sixth (1842) | William Boericke, 1922 | yes (above) |
+| First (1810) | C. E. Wheeler, English, 1913 | **yes** — `tools/build-organon1.py` |
+| Second (1819) | Hahnemann's **German** | **yes** — `tools/build-organon2.py` |
+| Third (1824) | Hahnemann's **German** | **yes** — `tools/build-organon3.py` |
+| Second (1819) | **Brunnow's French, 1824** | **yes** — `tools/build-organon2-fr.py` |
+| Second, third | **machine English** of the German | **yes, labelled** — `tools/translate-mt.py` |
+| Fourth (1829) | Charles H. Devrient, English, 1833 (the first English Organon) | **yes** — `tools/build-organon4.py` |
+| Fifth (1833) | R. E. Dudgeon, English, 1849 | yes (above) |
+| Sixth (1842) | William Boericke, English, 1922 | yes (above) |
 
-The second and third editions were translated into French (Brunnow, 1824) and other
-languages; no English version of either has ever been published. Nothing was translated,
-paraphrased or generated to stand in for them, and the reader does not offer them.
+The second and third editions were translated into French (Brunnow, 1824), Italian and
+other languages; **no English version of either has ever been published.** Nothing is
+paraphrased or reconstructed to stand in for them. The reader therefore carries the German
+and the French *as printed*, and offers English only as a machine translation, generated
+once at build time, kept in its own bundles, and labelled on every section it touches.
 
 ### The first edition — Wheeler, 1913
 
@@ -207,3 +211,80 @@ Archive items named above, name them as the scripts expect, and:
 Each bundle records, in `meta.scans`, the SHA-256 and byte count of every OCR file it used,
 and in `meta.verification` the median and minimum coverage it achieved, so the figures above
 can be checked rather than taken on trust.
+
+## The second and third editions, in German, and Brunnow's French — added 2026-11-19
+
+A third kind of book needed a third kind of parser. The second edition (1819) and the third
+(1824) print a paragraph number in the margin and, where several paragraphs share one
+sentence, a **range** — `90 — 105`, `258 — 274` — with the text printed once. So the unit
+these books actually have is the *block*, and `tools/scanlib.py` carries one block under its
+first number with `to` recording the last. §90–105 is one sentence under five marks; expanding
+it into sixteen copies would duplicate Hahnemann fifteen times, and inventing sixteen texts
+would be worse. The reader prints `§90–105`.
+
+| | second edition | third edition | French (Brunnow) |
+|---|---|---|---|
+| Work | *Organon der Heilkunst* (1819) | *Organon der Heilkunst* (1824) | *Organon de l'art de guérir* (1824) |
+| Language | German | German | French |
+| Reading text | `organonderheilku01hahn` | `organonderheilku02hahn` | `b2930538x` |
+| Second copy | `10476160bsb` — corpus only | `organonderheilk01hahngoog` | `bub_gb_Qr_z-ZNDW48C` |
+| Numbered to | §318 | §320 | §318 |
+| Blocks carried | 88 | 297 | 314 |
+| Numbered paragraphs covered | 176 of 318 | 307 of 320 | 314 of 318 |
+| Licence of the text | public domain | public domain | public domain |
+
+**The edition guards.** A German scan is admitted only if its own front matter says
+`ZWEITE AUFLAGE` (1819) or `DRITTE AUFLAGE` (1824), and only if it names neither Boericke,
+Dudgeon nor Devrient — a translation is a different book. A French scan must say
+`TRADUIT` and name Brunnow, and must name none of those translators.
+
+**Why the 1819 German is only partly there.** The reading copy (`organonderheilku01hahn`) is
+a poor scan: its margin numbers are mangled (`§106` came out as `J.06`, `§110` as `JlO`), and
+the second copy (`10476160bsb`, Bayerische Staatsbibliothek) is a library scan whose own
+marks are unreadable, so it can corroborate words but not numbers. 88 blocks covering 176 of
+the 318 numbered paragraphs came out clean; the other 142 numbers are listed in
+`meta.missing` and shown in the section list as gaps, never guessed. The French translation
+of the same edition carries 314 of 318, which is where a reader should go for the sections
+the German copy lost.
+
+**Why the 1824 German is nearly whole.** Both copies read their marks (`organonderheilku02hahn`
+and Google's `organonderheilk01hahngoog`), so 297 blocks covering 307 of 320 paragraphs were
+recovered; the 13 lost numbers are named. The two copies are different scans of the same
+printing and are parsed independently.
+
+**What is not carried.** Hahnemann's Introduction, prefaces and footnotes are not part of the
+numbered text; none of these three bundles carries them, and the reader says so.
+
+**Rebuilding.** The OCR files are not committed. Fetch them (`<id>_djvu.txt` from
+`https://archive.org/download/<id>/`) into `$ORGANON_SRC` as
+`organon2/organonderheilku01hahn.txt`, `organon2/10476160bsb.txt`,
+`organon3/organonderheilku02hahn.txt`, `organon3/organonderheilk01hahngoog.txt`,
+`organon2fr/b2930538x.txt` and `organon2fr/bub_gb_Qr_z-ZNDW48C.txt`, then:
+
+    ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon2.py
+    ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon3.py
+    ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon2-fr.py
+
+## The machine translations — generated text, quarantined
+
+`tools/translate-mt.py` sends each German block to Google's `translate_a/single` endpoint
+**once, at build time**, and writes `docs/organon2-en-mt-data.js` and
+`docs/organon3-en-mt-data.js`. No key is used and nothing is fetched at run time: the
+reader loads the result from disk like any other bundle.
+
+What keeps it honest:
+
+- it is a **separate bundle** with a **separate store key**, so a bookmark or a note cannot
+  cross between a machine book and a published one;
+- every section carries `mt: true` and `from: "machine translation"`, and the reader prints
+  *machine translation — generated text, not a published translation* above the text of every
+  such section, and in that book's footer;
+- `meta.machine_translation` names the engine, the date, the German bundle it came from, and
+  carries the caveat; `meta.verification` records that there is nothing to corroborate it
+  against, because the translation it would be checked against does not exist;
+- the figures on this page are the German ones. A machine bundle is a rendering of its German
+  source, inherits its gaps, and adds its own errors; the German is the authority.
+
+    ORGANON_MT_CACHE=/tmp/organon-mt-cache.json python3 tools/translate-mt.py
+
+The cache holds each source paragraph by SHA-256, so a rebuild only sends what changed.

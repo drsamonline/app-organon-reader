@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.6.0 — 2026-11-19
+
+**The shelf is complete: the second and third editions join it, in the languages they were
+printed in, with a machine translation where no published English exists.**
+
+- **The second edition (1819), in Hahnemann's German** (`tools/build-organon2.py`): 88 blocks
+  covering 176 of the book's 318 numbered paragraphs, read from two copies of the 1819
+  printing. The reading copy is a poor scan — its margin numbers come out as `J.06` for §106
+  — and the second copy's marks are unreadable, so 142 numbers are named as gaps rather than
+  guessed.
+- **The third edition (1824), in Hahnemann's German** (`tools/build-organon3.py`): 297 blocks
+  covering 307 of its 320 numbered paragraphs, read from two legible copies. Median
+  corroboration 1.000, minimum 0.956; the 13 lost numbers are named.
+- **Brunnow's French of 1824** (`tools/build-organon2-fr.py`): 314 blocks covering 314 of 318
+  numbered paragraphs — the second edition as French readers had it, untranslated here.
+- **A new parser** (`tools/scanlib.py`) for a third kind of book. The 1819 and 1824 printings
+  set a number in the margin and a **range** where several paragraphs share one sentence
+  (`§90–105`), so one block is carried under its first number with `to` recording the last.
+  Nothing inside a range is invented or sixteen times duplicated.
+- **Machine English for both German editions** (`tools/translate-mt.py`), built once at build
+  time through Google's endpoint. It is a separate bundle, carries `mt: true` and its engine
+  in the meta, prints *machine translation — generated text* above every section and in the
+  book's footer, and has its own store key so a bookmark cannot cross into a published
+  edition. No key is used and the app still fetches nothing.
+- **The badges are generated from the books, not typed.** `scripts/badges.py` now reads the
+  bundles and the suite and rewrites the README badge block between `badges:start` and
+  `badges:end`, so a figure that changes in the data changes in the badge. The old editions
+  badge claimed `4 · 271+292+294+291` — a sum of the four English books' paragraph counts that
+  read as if it were the number carried — and a `sections.svg` was generated but never shown.
+  Both are fixed: *6 editions*, *4 English · 2 machine*, *1082/1148* sections.
+- The suite went from 40 to 46 assertions: ranges cover every number they claim, the missing
+  list is exactly the numbers no block covers, and every machine-translated section is
+  labelled as one.
+
 ## 1.5.0 — 2026-11-19
 
 **Four editions instead of two.** The first edition (1810) and the fourth (1829) join the

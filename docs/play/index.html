@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Organon Reader — four editions, offline</title>
-<meta name="description" content="An offline reader for the Organon of Medicine in four English editions — first (Wheeler 1913), fourth (Devrient 1833), fifth (Dudgeon 1849) and sixth (Boericke 1922) — with section lists, next/previous, full-text search, bookmarks and notes, no network.">
+<title>Organon Reader — nine books, offline</title>
+<meta name="description" content="An offline reader for the Organon of Medicine: the four English editions (first, Wheeler 1913; fourth, Devrient 1833; fifth, Dudgeon 1849; sixth, Boericke 1922), the German second (1819) and third (1824) that were never translated, Brunnow's French of 1824, and a clearly labelled machine translation of each German edition.">
 <style>
   /* ---- the same page as the landing: gold on near-black, warm paper in light ---- */
   :root{
@@ -125,15 +125,26 @@
 <header>
   <div>
     <h1>Organon Reader</h1>
-    <div class="sub" id="sub">Organon of Medicine · 1810, 1829, 1833 and 1842 · offline, no account</div>
+    <div class="sub" id="sub">Organon of Medicine · 1810–1842 · offline, no account</div>
   </div>
   <div style="flex:1"></div>
   <label class="edlab" for="edition">Edition</label>
   <select id="edition" aria-label="Choose the edition to read">
-    <option value="first">First — Wheeler, 1913</option>
-    <option value="fourth">Fourth — Devrient, 1833</option>
-    <option value="fifth">Fifth — Dudgeon, 1849</option>
-    <option value="sixth">Sixth — Boericke, 1922</option>
+    <optgroup label="English translations as published">
+      <option value="first">First — Wheeler, 1913</option>
+      <option value="fourth">Fourth — Devrient, 1833</option>
+      <option value="fifth">Fifth — Dudgeon, 1849</option>
+      <option value="sixth">Sixth — Boericke, 1922</option>
+    </optgroup>
+    <optgroup label="Never translated into English">
+      <option value="second">Second — German, 1819</option>
+      <option value="third">Third — German, 1824</option>
+      <option value="secondFr">Second — French, Brunnow 1824</option>
+    </optgroup>
+    <optgroup label="Machine translation (generated)">
+      <option value="secondMt">Second — machine English</option>
+      <option value="thirdMt">Third — machine English</option>
+    </optgroup>
   </select>
   <input id="q" type="search" placeholder="Search the text — try &ldquo;vital force&rdquo;" aria-label="Search the text">
   <button id="go">Search</button>
@@ -171,23 +182,31 @@
 </main>
 
 <footer id="foot">
-  Text: public domain (Hahnemann d. 1843; Wheeler 1913, Devrient 1833, Dudgeon 1849, Boericke 1922),
-  read from scans of each edition's own printing. This reader presents the text and keeps your marks — it does not interpret or advise.
+  Text: public domain (Hahnemann d. 1843; Wheeler 1913, Devrient 1833, Dudgeon 1849, Boericke 1922;
+  Hahnemann's German 1819 and 1824; Brunnow's French 1824), read from scans of each edition's own printing.
+  The machine translations are generated text, not published translations, and are labelled everywhere they appear.
+  This reader presents the text and keeps your marks — it does not interpret or advise.
   Use ← and → to move between sections.
-  <div style="margin-top:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--mut)">design 2026-11-05 · reader v3 · four editions</div>
+  <div style="margin-top:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--mut)">design 2026-11-05 · reader v4 · nine books</div>
 </footer>
 
 <script src="../organon-data.js"></script>
 <script src="../organon5-data.js"></script>
 <script src="../organon4-data.js"></script>
 <script src="../organon1-data.js"></script>
+<script src="../organon2-data.js"></script>
+<script src="../organon3-data.js"></script>
+<script src="../organon2-fr-data.js"></script>
+<script src="../organon2-en-mt-data.js"></script>
+<script src="../organon3-en-mt-data.js"></script>
 <script src="../reader.js"></script>
 <script>
 (function () {
   "use strict";
   var R = window.OrganonReader;
 
-  /* ---- four editions, all bundled, all public domain ----
+  /* ---- nine books, all bundled, all public domain (the machine translations excepted,
+   * which are generated and say so) ----
    * They are different books, not four renderings of one: the fifth carries three
    * paragraphs the sixth does not and words 74 of them differently; the first and the
    * fourth are earlier stages of the doctrine, 271 and 292 paragraphs long. Each keeps
@@ -227,11 +246,66 @@
       blurb: "Text: public domain (Hahnemann d. 1843; Wheeler translation 1913), read from two scans of the 1913 " +
              "Everyman's printing. Wheeler's is the only English translation of the first edition; it omits " +
              "Hahnemann's Introduction and most of his footnotes, and this reader does not fill that gap."
+    },
+    second: {
+      name: "second",
+      book: window.ORGANON2,
+      store: "organon-reader:second:v1",
+      sub: "Organon der Heilkunst, 2. Auflage, 1819 \u00b7 Hahnemann's German \u00b7 offline, no account",
+      chip: "Hahnemann's German of 1819 \u2014 this edition has no English translation",
+      blurb: "Text: public domain (Hahnemann d. 1843), read from scans of the 1819 printing. The second " +
+             "edition was never translated into English; it was printed in German and, in 1824, in " +
+             "Brunnow's French. It sets a paragraph number in the margin, and a range where several " +
+             "paragraphs share one sentence (\u00a790\u2013105), so blocks are shown as ranges."
+    },
+    third: {
+      name: "third",
+      book: window.ORGANON3,
+      store: "organon-reader:third:v1",
+      sub: "Organon der Heilkunst, 3. Auflage, 1824 \u00b7 Hahnemann's German \u00b7 offline, no account",
+      chip: "Hahnemann's German of 1824 \u2014 this edition has no English translation",
+      blurb: "Text: public domain (Hahnemann d. 1843), read from two scans of the 1824 printing. The third " +
+             "edition was never translated into English. It runs to 320 numbered paragraphs, nearly " +
+             "unchanged from the second, with the same marginal ranges and the same named gaps."
+    },
+    secondFr: {
+      name: "secondFr",
+      book: window.ORGANON2FR,
+      store: "organon-reader:second-fr:v1",
+      sub: "Organon de l'art de gu\u00e9rir, 1824 \u00b7 Brunnow's French \u00b7 offline, no account",
+      chip: "Brunnow's French of 1824 \u2014 a published translation, not a generated one",
+      blurb: "Text: public domain (Hahnemann d. 1843; Brunnow's French 1824), read from two scans of the " +
+             "Dresden printing. This is the second edition as French readers had it, untranslated here: " +
+             "nothing on this page is generated."
+    },
+    secondMt: {
+      name: "secondMt",
+      book: window.ORGANON2MT,
+      store: "organon-reader:second-mt:v1",
+      sub: "Second edition, 1819 \u00b7 MACHINE TRANSLATION \u00b7 generated, not published",
+      chip: "machine translation \u2014 generated text, not a published translation",
+      mt: true,
+      blurb: "MACHINE TRANSLATION. No English translation of the second edition exists, so this English was " +
+             "generated from the German when the bundle was built. It is not Hahnemann's English and no " +
+             "publisher ever issued it. The German edition beside it is the authority; this is a reading aid."
+    },
+    thirdMt: {
+      name: "thirdMt",
+      book: window.ORGANON3MT,
+      store: "organon-reader:third-mt:v1",
+      sub: "Third edition, 1824 \u00b7 MACHINE TRANSLATION \u00b7 generated, not published",
+      chip: "machine translation \u2014 generated text, not a published translation",
+      mt: true,
+      blurb: "MACHINE TRANSLATION. No English translation of the third edition exists, so this English was " +
+             "generated from the German when the bundle was built. It is not Hahnemann's English and no " +
+             "publisher ever issued it. The German edition beside it is the authority; this is a reading aid."
     }
   };
 
-  /* Each edition is compared with the nearest one that can be read beside it: the sixth
-   * with the fifth, and the earlier books with the sixth. */
+  /* Each English edition is compared with the nearest one that can be read beside it: the
+   * sixth with the fifth, and the earlier books with the sixth. A German, French or machine
+   * book is not compared by wording with an English one — that would report every section
+   * as "different" and mean nothing — so those say what they are instead. */
   var REF = { first: "sixth", fourth: "sixth", fifth: "sixth", sixth: "fifth" };
   var DIFF_CACHE = {};
 
@@ -314,7 +388,7 @@
     all.sort(function (a, b) { return a - b; });
     $("secs").innerHTML = all.map(function (n) {
       if (index.byNumber[n]) {
-        return '<button class="row" data-n="' + n + '"><span class="num">§' + n + '</span>' +
+        return '<button class="row" data-n="' + n + '"><span class="num">' + secLabel(index.byNumber[n]) + '</span>' +
           esc(index.byNumber[n].text.slice(0, 46)) + '…</button>';
       }
       return '<div class="row gap">§' + n + ' — not readable in any scan</div>';
@@ -331,7 +405,7 @@
       return;
     }
     box.innerHTML = state.bookmarks.map(function (n) {
-      return '<button class="row" data-n="' + n + '"><span class="num">§' + n + '</span>' +
+      return '<button class="row" data-n="' + n + '"><span class="num">' + secLabel(index.byNumber[n] || { n: n }) + '</span>' +
         esc((index.byNumber[n] ? index.byNumber[n].text : "").slice(0, 42)) + '…</button>';
     }).join("");
     Array.prototype.forEach.call(document.querySelectorAll("#bms .row"), function (el) {
@@ -340,6 +414,8 @@
   }
 
   function provenance(row) {
+    if (row.mt) return '<div class="hint" style="margin:-8px 0 12px">text: machine translation of the ' +
+      'German block printed beside it — generated when the bundle was built, not a published translation</div>';
     if (!row.from) return "";
     var sources = (BOOK.meta.scans || []);
     var src = sources.filter(function (s) { return s.label === row.from; })[0];
@@ -352,7 +428,13 @@
     return '<div class="hint" style="margin:-8px 0 12px">text from the ' + esc(row.from) + " " + kind + tail + '</div>';
   }
 
+  /* a block may stand for a printed range: §90–105 is one sentence under five marks */
+  function secLabel(row) {
+    return "\u00a7" + row.n + (row.to && row.to !== row.n ? "\u2013" + row.to : "");
+  }
+
   function chip(n) {
+    if (EDITIONS[KEY].chip) return '<div><span class="edchip">' + esc(EDITIONS[KEY].chip) + '</span></div>';
     var d = diffWith(KEY), here = EDITIONS[KEY].name, there = EDITIONS[REF[KEY] || "sixth"].name;
     if (d.onlyHere[n]) return '<div><span class="edchip">only in the ' + here + ' edition</span></div>';
     if (d.onlyThere[n]) return '<div><span class="edchip">not carried here — only in the ' + there + ' edition</span></div>';
@@ -370,7 +452,7 @@
     $("view").innerHTML =
       '<div class="navrow">' +
         '<button class="ghost" id="prev"' + (prev ? "" : " disabled") + '>&larr; ' + (prev ? "§" + prev : "start") + '</button>' +
-        '<div class="secnum">Section ' + n + ' of ' + BOOK.meta.total_in_book + '</div>' +
+        '<div class="secnum">' + secLabel(row) + ' of ' + BOOK.meta.total_in_book + ' numbered</div>' +
         '<div class="spacer"></div>' +
         '<button class="ghost" id="next"' + (next ? "" : " disabled") + '>' + (next ? "§" + next : "end") + ' &rarr;</button>' +
       '</div>' +
