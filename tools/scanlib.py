@@ -276,9 +276,12 @@ def mark_readings(line, max_n):
                                   all(b > a for a, b in zip(nums, nums[1:]))):
                 out.append((tuple(nums), False, False, r))
                 continue
-        # a range that cannot be read whole still keeps the end printed first
+        # a range that cannot be read whole still keeps the end printed first. The
+        # token where the end was lost is not text: `181 — igS- Mafsregeln` prints its
+        # rubric as `Mafsregeln …`, so the lost number is dropped with the dash.
         if nums and re.match(r"^[0-9A-Za-z|!~?]{1,4}\s*[—–-]", rest):
-            out.append((tuple(nums[:1]), False, True, r))
+            lost = re.sub(r"^[0-9A-Za-z|!~?]{1,4}\s*[—–-]+\s*", "", r)
+            out.append((tuple(nums[:1]), False, True, lost))
             continue
         # the first number is unreadable but a later one is printed: `394 — -228.`
         m = None if nums else re.match(

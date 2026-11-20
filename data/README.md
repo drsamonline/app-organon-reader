@@ -269,7 +269,9 @@ closed and those numbers stay named gaps, while an end the second copy itself pr
 still settled (`§181–193`). Each such block records where its number came from in
 `numbers_from`, and the count is in `meta`; nothing is restored silently. Today that recovers
 §110–119, §181–193 (the end from the second copy), §194–228 and §245–250 — all four read
-back on the printed page.
+back on the printed page. The mangled number is not carried as text: where an end was lost,
+the rubric begins at its first printed word (`181 — igS- Mafsregeln…` is carried as
+`Mafsregeln…`), so no OCR fragment is offered as Hahnemann's.
 
 The local-ailment entry is **§194–228, not §182–228**. Version 1.6.1 restored its start from
 the entry beside it while that entry was still truncated to `§181`; read whole, the entry

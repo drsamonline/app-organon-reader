@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.4 — 2026-11-20
+
+**The mangled number that stood for a lost range end is no longer carried as text.**
+
+- **Two rubrics began with an OCR fragment instead of their words.** Where the reader kept the
+  printed end of a range and lost the other, it started the rubric at the unreadable token:
+  §181 read `igS- Mafsregeln bei Heilung…` and §31 `I- Die ältere…`. The page prints
+  `Mafsregeln…` and `Die ältere…`, so the token is now dropped with the dash, in the one
+  reader that produces both books.
+- **The machine translation is re-mapped, not re-run.** The English had been made from the old
+  German and echoed the fragment (`igS measures…`, `I- The older…`); each rendering now drops
+  the echo and starts at the surviving word. Meta, the 2026-11-19 build stamp and all 98
+  sections are otherwise unchanged, because no new translation was made.
+- **No figures change.** 98 blocks, 280 of 318 numbered paragraphs covered, 38 named gaps, 46
+  assertions; the page citations in `data/README.md` stand.
+
 ## 1.6.3 — 2026-11-20
 
 **The four restored ranges are confirmed on the printed page.**
