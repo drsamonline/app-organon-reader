@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.6.7 — 2026-11-20
+
+**The French bundle's §1 opens with its printed word.**
+
+- **The fragment is a printed drop cap, not a lost number.** The new guard flagged the
+  French §1's `J— /a première…`; leaf 117 of the reading copy prints `§. 1.` above
+  `La première et unique vocation du médecin`. Stripping the fragment as §181's was stripped
+  would have deleted the printed `L` and left `/a première…`, so §1 is carried as
+  `La première…`, read from the page.
+- **The scans were fetched again and matched.** Both copies re-downloaded and hashed to the
+  SHA-256 values in `meta.scans` (618,867 and 558,784 bytes), so the rebuild rests on the same
+  bytes the bundle records.
+- **`scanlib.build` takes a `text_fix` map.** `{number: (as_read, as_printed)}` is for a word
+  the scan destroyed and the page settles; it is applied before verification, and the book's
+  notes must name the page, so a transcription cannot pass as OCR. The French build uses it
+  once, for §1, and says so in its notes.
+- **No figures move.** 318 numbered paragraphs, 314 blocks, 314 covered, 4 named gaps
+  (216–218, 287), 47 assertions; §1's text and the bundle's notes are the only changes.
+
 ## 1.6.6 — 2026-11-20
 
 **A guard against the lost-number fragment.**

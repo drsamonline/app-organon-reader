@@ -542,8 +542,14 @@ def write_bundle(out_js, out_json, meta, sections, global_name, comment, spans=T
 
 def build(out_js, out_json, global_name, max_n, sources, edition, title, translator,
           language, comment, confidence_note, floor=0.60, source_url=None, notes=(),
-          generator="tools/", extras=()):
-    """Shared body: read every scan, corroborate, name the gaps, write the bundle."""
+          generator="tools/", extras=(), text_fix=None):
+    """Shared body: read every scan, corroborate, name the gaps, write the bundle.
+
+    `text_fix` is `{number: (as_ocr_read_it, as_the_page_prints_it)}` for a word the scan
+    destroyed and the page settles. It is a transcription, not a guess: the book's notes
+    must name the page it was read from, and the fix is applied before verification so
+    the figure the reader shows covers the text it ships.
+    """
     corpus, per_scan, scan_meta_list, seen = set(), {}, [], {}
     for src in sources:
         path = os.path.join(os.environ.get("ORGANON_SRC", "."), src["path"])
@@ -582,6 +588,13 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
                 merged[n] = text
                 origin[n] = lab
                 to_of[n] = to
+
+    for n, (as_read, as_printed) in (text_fix or {}).items():
+        if n not in merged:
+            raise SystemExit(f"text_fix names §{n}, which the scans do not carry")
+        if as_read not in merged[n]:
+            raise SystemExit(f"text_fix looks for {as_read!r} in §{n}, which does not read so")
+        merged[n] = merged[n].replace(as_read, as_printed, 1)
 
     _finish(merged, origin, to_of, {}, corpus, max_n, out_js, out_json, global_name,
             {"title": title, "edition": edition, "translator": translator,

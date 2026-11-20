@@ -40,6 +40,12 @@ SOURCES = [
      "end_matter": END_MATTER, "drop": DROP, "body": BODY},
 ]
 
+# §1 opens with a printed drop cap that the scan splits into `J— /a`, so the rubric
+# began with a fragment that looks like a number but is the word `La`. Read on the page:
+# leaf 117 of the reading copy prints `§. 1.` above `La première et unique vocation du
+# médecin`. This is a transcription of that word, not a repair of the rest of the OCR.
+TEXT_FIX = {1: ("J— /a première", "La première")}
+
 NOTES = [
     "Brunnow's French is a translation of the second German edition (1819). The third "
     "German edition's preface says so: the previous edition had been translated into "
@@ -51,6 +57,9 @@ NOTES = [
     "share one sentence, exactly as the German does. Each block is carried under its first "
     "number with the range recorded.",
     "Brunnow numbers his paragraphs to §318, like the 1819 German he worked from.",
+    "§1's first word is transcribed from the page: the scan splits the printed drop-cap "
+    "`La` into `J— /a`, and the rubric is carried as `La première…` (leaf 117 of the "
+    "reading copy). The rest of §1 is OCR, with its errors left as the scan gives them.",
 ]
 
 
@@ -68,6 +77,7 @@ def main():
                         "against scan; the two copies are different scans of the same "
                         "printing, so a word lost in one is usually kept in the other.",
         notes=NOTES, floor=FLOOR, generator="tools/build-organon2-fr.py",
+        text_fix=TEXT_FIX,
         extras=(("machine_translation", None),
                 ("english_translation_exists", False)))
 
