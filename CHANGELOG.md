@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.3 — 2026-11-20
+
+**The four restored ranges are confirmed on the printed page.**
+
+- **Read back on the scans' page images.** §110–119, §181–193, §194–228 and §245–250 were
+  checked against the reading copy's leaves 33 and 35 (book pages 24 and 26). Page 24 prints
+  `110 — 119.` and `120.`; page 26 prints `181 — 193.`, `194 — 228.` (with its `Anm.`),
+  `229 — 244.` and `245 — 250.` Every end the build restores from a neighbouring entry or the
+  second copy is therefore the number the page itself prints, and the 1.6.2 correction stands
+  on the page, not only on the list's order.
+- **No figures change.** 98 blocks, 280 of 318 numbered paragraphs covered, 38 named gaps, 46
+  assertions. The provenance note in `data/README.md` is the only addition.
+
 ## 1.6.2 — 2026-11-20
 
 **The 1819 list's local-ailment entry is §194–228, not §182–228; range ends are now borrowed

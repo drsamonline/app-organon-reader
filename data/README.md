@@ -267,13 +267,24 @@ prints every paragraph 1–318, has every number the restored range would cover.
 bundle is missing no end is restored from a neighbouring entry**: the neighbour rule fails
 closed and those numbers stay named gaps, while an end the second copy itself prints is
 still settled (`§181–193`). Each such block records where its number came from in
-`numbers_from`, and the count is in `meta`; nothing is restored silently. Today that recovers §110–119, §181–193 (the end
-from the second copy), §194–228 and §245–250.
+`numbers_from`, and the count is in `meta`; nothing is restored silently. Today that recovers
+§110–119, §181–193 (the end from the second copy), §194–228 and §245–250 — all four read
+back on the printed page.
 
 The local-ailment entry is **§194–228, not §182–228**. Version 1.6.1 restored its start from
 the entry beside it while that entry was still truncated to `§181`; read whole, the entry
 runs to `§193`, so the next one begins at `§194` — where Brunnow's §194 opens the same
 subject ("les maux locaux"). `§182` is not a block start.
+
+**The restored ends are printed on the page.** All four ranges the build recovers were read
+back on the scans' page images (the reading copy, leaves 33 and 35 — book pages 24 and 26).
+Page 24 prints `109.`, then `110 — 119. Vorerinnerung zur Erforschung der reinen
+Arznei-Wirkungen an gesunden Menschen; Erstwirkung, Nachwirkung.`, then `120.` Page 26
+prints `168 — 180.`, `181 — 193.`, `194 — 228.` (with its `Anm.`), `229 — 244.`, `245 — 250.`,
+`251.` and `252 — 257.` So every end restored from a neighbouring entry or from the second
+copy is the number the page itself prints: none of the four rests on inference about the
+list's order. The images are not committed; the pages are cited here so the check can be
+repeated.
 
 **Why the 1824 German is nearly whole.** Both copies read their marks (`organonderheilku02hahn`
 and Google's `organonderheilk01hahngoog`), so 297 blocks covering 307 of 320 paragraphs were
