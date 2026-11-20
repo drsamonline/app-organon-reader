@@ -18,9 +18,10 @@ from the second copy for real, and the restoration fails closed without the Fren
   against `181 — 193.`, and `meta.numbered_from_second_copy` is now 1 — counted from the
   blocks that record it in `numbers_from`, not asserted.
 - **Range-end restoration fails closed.** With `docs/organon2-fr-data.js` absent there is no
-  corroboration, so no end is restored: the build prints that it will restore nothing and
-  leaves those numbers as named gaps (232 covered, 86 gaps) instead of reading "not built" as
-  consent. Nothing else about the build depends on the French.
+  corroboration, so no end is restored from a neighbouring entry: the build prints that it
+  will restore none that way and leaves those numbers as named gaps (232 covered, 86 gaps)
+  instead of reading "not built" as consent. An end the second copy itself prints is still
+  settled — §181–193 stands even then. Nothing else about the build depends on the French.
 - **Figures.** 98 blocks covering 280 of 318 numbered paragraphs, 38 named gaps — unchanged;
   the widest carried range drops from 46 numbers to 34, so the suite's range guard is back to
   40. The suite is unchanged at 46 assertions, now with four more checks on this boundary.

@@ -356,8 +356,9 @@ def resolve_entries(entries, max_n=319, known=None, witness=None):
     named gap.
 
     The neighbour rule is only used where Brunnow's French contents list can check the
-    range it would cover. Without that list (`known is None`) nothing is restored: the
-    build fails closed to named gaps rather than guessing.
+    range it would cover. Without that list (`known is None`) no end is restored from a
+    neighbour: the build fails closed to named gaps rather than guessing. `witness` needs
+    no such check — it prints the end itself.
     """
     last = 0
     for e in entries:
@@ -378,35 +379,32 @@ def resolve_entries(entries, max_n=319, known=None, witness=None):
     def corroborated(span):
         """Every number of the span is printed in the French contents list.
 
-        A missing list corroborates nothing: the restoration fails closed.
+        A missing list corroborates nothing: the neighbour rule fails closed.
         """
-        if known is None:
-            return False
-        have = sum(1 for n in span if n in known)
-        return have >= 0.85 * len(span)
+        return (known is not None
+                and sum(n in known for n in span) >= 0.85 * len(span))
 
     # the other copy of the same printing prints the end this one lost
     numbered_witness = [w for w in witness or () if w.get("numbers")]
-    if numbered_witness:
-        for e in entries:
-            if not e["numbers"] or not (e["open_start"] or e["open_end"]):
-                continue
-            w = same_entry(e, numbered_witness)
-            wn = (w or {}).get("numbers") or []
-            if len(wn) < 2:
-                continue
-            if (e["open_end"] and wn[0] == e["numbers"][0]
-                    and wn[-1] > e["numbers"][-1]):
-                e["numbers"].append(wn[-1])
-                e["open_end"] = False
-                e["restored"].append({"end": wn[-1],
-                                      "from": "the second copy of the printing"})
-            if (e["open_start"] and wn[-1] == e["numbers"][-1]
-                    and wn[0] < e["numbers"][0]):
-                e["numbers"].insert(0, wn[0])
-                e["open_start"] = False
-                e["restored"].append({"start": wn[0],
-                                      "from": "the second copy of the printing"})
+    for e in entries:
+        if not e["numbers"] or not (e["open_start"] or e["open_end"]):
+            continue
+        w = same_entry(e, numbered_witness)
+        wn = (w or {}).get("numbers") or []
+        if len(wn) < 2:
+            continue
+        if (e["open_end"] and wn[0] == e["numbers"][0]
+                and wn[-1] > e["numbers"][-1]):
+            e["numbers"].append(wn[-1])
+            e["open_end"] = False
+            e["restored"].append({"end": wn[-1],
+                                  "from": "the second copy of the printing"})
+        if (e["open_start"] and wn[-1] == e["numbers"][-1]
+                and wn[0] < e["numbers"][0]):
+            e["numbers"].insert(0, wn[0])
+            e["open_start"] = False
+            e["restored"].append({"start": wn[0],
+                                  "from": "the second copy of the printing"})
 
     for k, e in enumerate(entries):
         nxt = entries[k + 1] if k + 1 < len(entries) else None
@@ -414,17 +412,17 @@ def resolve_entries(entries, max_n=319, known=None, witness=None):
             end = nxt["numbers"][0] - 1
             if end > e["numbers"][-1] and corroborated(range(e["numbers"][-1], end + 1)):
                 e["numbers"].append(end)
+                e["open_end"] = False
                 e["restored"].append({"end": end, "from": "the next entry's first number"})
         elif e["open_start"] and k and entries[k - 1]["numbers"]:
             start = entries[k - 1]["numbers"][-1] + 1
             if (e["numbers"] and start < e["numbers"][0]
                     and corroborated(range(start, e["numbers"][0] + 1))):
                 e["numbers"].insert(0, start)
+                e["open_start"] = False
                 e["restored"].append({"start": start,
                                       "from": "the previous entry's last number"})
-    for e in entries:
-        if e["numbers"] and e["open_end"] and not e["restored"]:
-            e["numbers"] = e["numbers"][:1]
+    # an end still open was never restored: the reading kept only the end it printed
     return entries
 
 
@@ -432,10 +430,10 @@ def bundle_numbers(path):
     """The paragraph numbers a bundle already built from a scan carries.
 
     Returns None when the bundle is not there, which `resolve_entries` reads as "no
-    corroboration": the range ends are then left as named gaps.
+    corroboration": ends that need a neighbour are then left as named gaps.
     """
     if not os.path.exists(path):
-        print(f"  !! {path} not built — no range end will be restored (they stay gaps)")
+        print(f"  !! {path} not built — no end will be restored from a neighbour")
         return None
     text = open(path, encoding="utf-8").read()
     text = text[text.index("return ") + 7:text.rindex("};") + 1]

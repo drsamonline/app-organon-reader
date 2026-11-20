@@ -23,9 +23,10 @@ the two entries print the same rubric, and the borrow is recorded in `numbers_fr
 A range that still lost one end keeps the end that was printed. The lost end is taken
 from the entry beside it — the list enumerates the paragraphs in order — and only when
 Brunnow's French contents list, which prints every paragraph 1–318, has the numbers the
-restored range would cover. If that bundle is not built there is no corroboration, and
-nothing is restored: the numbers stay named gaps. Every restored end is recorded on its
-block (`numbers_from`); anything that cannot be settled that way stays a named gap.
+restored range would cover. If that bundle is not built there is no corroboration, and no
+end is restored from a neighbouring entry: those numbers stay named gaps (an end the second
+copy prints is still taken). Every restored end is recorded on its block (`numbers_from`);
+anything that cannot be settled that way stays a named gap.
 
     ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon2.py
 """
@@ -116,8 +117,6 @@ def main():
         entries_by_label[src["label"]] = entries
         scans.append(meta)
     known = scanlib.bundle_numbers(FRENCH)
-    label = "Hahnemann-1819-BN" if "Hahnemann-1819-BN" in entries_by_label \
-        else next(iter(entries_by_label), None)
     for entries in entries_by_label.values():
         scanlib.resolve_entries(entries, MAX, known=known)
     # second pass, the other copy in hand: an end borrowed there changes where the entry
@@ -127,7 +126,8 @@ def main():
         if others:
             scanlib.resolve_entries(entries, MAX, known=known, witness=others)
 
-    primary = entries_by_label.get(label) or []
+    primary = (entries_by_label.get("Hahnemann-1819-BN")
+               or next(iter(entries_by_label.values()), []))
     print(f"  french contents list: {len(known or ())} numbered paragraphs (corroboration)")
     # a number taken from the other copy of the printing, recorded on the block itself
     borrowed = sum(1 for e in primary for r in e["restored"]

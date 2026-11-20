@@ -264,9 +264,10 @@ first from the other copy of the printing, where it prints the same rubric whole
 (`181 — 193.` for `l8l — igS`), and otherwise from the entry beside it — the list
 enumerates the paragraphs in order — and only when Brunnow's French contents list, which
 prints every paragraph 1–318, has every number the restored range would cover. **When that
-bundle is missing the build restores nothing**: it fails closed, and the numbers stay named
-gaps. Each such block records where its number came from in `numbers_from`, and the count
-is in `meta`; nothing is restored silently. Today that recovers §110–119, §181–193 (the end
+bundle is missing no end is restored from a neighbouring entry**: the neighbour rule fails
+closed and those numbers stay named gaps, while an end the second copy itself prints is
+still settled (`§181–193`). Each such block records where its number came from in
+`numbers_from`, and the count is in `meta`; nothing is restored silently. Today that recovers §110–119, §181–193 (the end
 from the second copy), §194–228 and §245–250.
 
 The local-ailment entry is **§194–228, not §182–228**. Version 1.6.1 restored its start from
@@ -295,7 +296,7 @@ bundle also does not carry the 1819 paragraphs (see above) — only the list tha
 
 The French build runs first: `tools/build-organon2.py` corroborates the restored range ends
 against the paragraph numbers in `docs/organon2-fr-data.js`, and if that bundle is not there
-it restores nothing at all — the uncorroborated ends stay named gaps.
+it restores no end from a neighbouring entry — the uncorroborated ends stay named gaps.
 
 ## The machine translations — generated text, quarantined
 
