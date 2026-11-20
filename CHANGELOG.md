@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.6 — 2026-11-20
+
+**A guard against the lost-number fragment.**
+
+- **The 1.6.4 entry no longer claims §31 was a lost range end.** It records only §181, and adds
+  that §31 was stripped on the same reasoning and should not have been; the correction stays in
+  1.6.5.
+- **The suite now refuses the fragment.** No rubric in the German bundle or its machine
+  translation may begin with a short token followed by a dash (`igS- Mafsregeln…`). A printed
+  sub-item such as §31's `I.` is prose and passes, because it carries a full stop rather than
+  the dash the fragment had.
+- **47 assertions** (was 46), and the `tests` badge is regenerated from the suite.
+
 ## 1.6.5 — 2026-11-20
 
 **§31's fragment was a printed sub-item, not a lost range end.**
@@ -20,15 +33,17 @@
 
 **The mangled number that stood for a lost range end is no longer carried as text.**
 
-- **Two rubrics began with an OCR fragment instead of their words.** Where the reader kept the
-  printed end of a range and lost the other, it started the rubric at the unreadable token:
-  §181 read `igS- Mafsregeln bei Heilung…` and §31 `I- Die ältere…`. The page prints
-  `Mafsregeln…` and `Die ältere…`, so the token is now dropped with the dash, in the one
-  reader that produces both books.
+- **§181 began with an OCR fragment instead of its words.** Where the reader kept the printed
+  end of a range and lost the other, it started the rubric at the unreadable token: §181 read
+  `igS- Mafsregeln bei Heilung…`. The page prints `Mafsregeln…`, so the token is now dropped
+  with the dash, in the one reader that produces both books.
 - **The machine translation is re-mapped, not re-run.** The English had been made from the old
-  German and echoed the fragment (`igS measures…`, `I- The older…`); each rendering now drops
-  the echo and starts at the surviving word. Meta, the 2026-11-19 build stamp and all 98
-  sections are otherwise unchanged, because no new translation was made.
+  German and echoed the fragment (`igS measures…`); it now drops the echo and starts at the
+  surviving word. Meta, the 2026-11-19 build stamp and all 98 sections are otherwise
+  unchanged, because no new translation was made.
+- **§31 was stripped on the same reasoning, and should not have been.** Its `I-` looked like a
+  lost end but is the entry's own printed sub-item; 1.6.5 reads it as prose and restores
+  `I. Die ältere…`.
 - **No figures change.** 98 blocks, 280 of 318 numbered paragraphs covered, 38 named gaps, 46
   assertions; the page citations in `data/README.md` stand.
 

@@ -533,6 +533,18 @@ t("the second edition is Hahnemann's German of 1819, and says it has no English 
   }
 });
 
+// a rubric must not open with the fragment that stood for a lost number: `igS- Mafsregeln`
+// is OCR, not Hahnemann's words. A printed sub-item such as §31's `I.` is prose and passes
+// (it is followed by a full stop, not by the dash the fragment carried).
+t("no second-edition rubric begins with the fragment that stood for a lost number", () => {
+  for (const [book, label] of [[BOOK2, "§"], [BOOK2MT, "machine §"]]) {
+    for (const s of book.sections) {
+      assert.ok(!/^[0-9A-Za-z|!~?]{1,4}\s*[—–-]\s/.test(s.text),
+        label + s.n + " begins with a lost-number fragment: " + JSON.stringify(s.text.slice(0, 40)));
+    }
+  }
+});
+
 t("the third edition is Hahnemann's German of 1824 and reads nearly whole", () => {
   assert.strictEqual(BOOK3.meta.total_in_book, 320);
   assert.strictEqual(BOOK3.meta.language, "de");

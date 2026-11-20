@@ -1,7 +1,7 @@
 <!-- badges:start -->
 <p align="center">
   <img src="docs/badges/live.svg" alt="live: online">
-  <img src="docs/badges/tests.svg" alt="tests: 46/46">
+  <img src="docs/badges/tests.svg" alt="tests: 47/47">
   <img src="docs/badges/offline.svg" alt="offline: 0 requests">
   <img src="docs/badges/deps.svg" alt="deps: 0">
   <img src="docs/badges/editions.svg" alt="editions: 6 editions">
