@@ -122,6 +122,33 @@
     };
   }
 
+  /* ---------- the sentence printed under a section number ---------- */
+  /**
+   * provenance(row, meta) -> the line of traceability printed with a section, as
+   * plain text: where its words came from, and how the scans bear them out. It lives
+   * here rather than in the page because the page is not covered by the suite, and a
+   * claim of traceability nobody checks is a claim, not a fact. A machine bundle says
+   * so first and says nothing else: it must never read as a published translation.
+   */
+  function provenance(row, meta) {
+    if (!row) return "";
+    if (row.mt) return "text: machine translation of the German block printed beside it \u2014 " +
+      "generated when the bundle was built, not a published translation";
+    if (!row.from) return "";
+    var scans = (meta && meta.scans) || [];
+    var src = scans.filter(function (s) { return s.label === row.from; })[0];
+    var kind = (src && src.role === "transcription") || /^MediT/.test(row.from)
+      ? "transcription" : "scan";
+    var tail = "";
+    if (row.corroboration != null) {
+      tail = " \u00b7 corroborated against " +
+        scans.filter(function (s) { return s.role === "scan"; }).length +
+        " scans of the same printing (" + Math.round(row.corroboration * 100) +
+        "% of its word-runs found verbatim)";
+    }
+    return "text from the " + row.from + " " + kind + tail;
+  }
+
   /* ---------- state: bookmarks and notes, on the device ---------- */
   function Store(storage, key) {
     this.storage = storage;
@@ -209,6 +236,7 @@
     numbers: numbers,
     step: step,
     coverage: coverage,
+    provenance: provenance,
     Store: Store,
     empty: empty,
     normalise: normalise,

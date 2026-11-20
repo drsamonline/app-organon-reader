@@ -37,7 +37,7 @@ heading (it is the same text in both editions), and **never** takes a fifth-edit
    become a section.
 3. **Corroboration.** For every transcription section, `tools/extract.py` measures the
    fraction of its 12-letter sequences that appear **verbatim** in the scans. A paraphrase
-   or a different translation scores near zero; this transcription scores **median 0.976,
+   or a different translation scores near zero; this transcription scores **median 0.981,
    minimum 0.729** across all 291 sections. Anything below 0.60 is refused and the scan's
    text is used instead.
 4. **Provenance.** Every section carries `from` (`MediT`, or a scan label) and its
@@ -71,7 +71,7 @@ SHA-256 of every OCR file used, and the edition evidence line, are recorded in
     python3 tools/parse-homeoint.py   # -> homeoint_sections.json (291, sixth edition only)
     python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 40 assertions
+    node test-node.js                 # the suite: 57 assertions
 
 ## The fifth edition, added 2026-11-03
 
@@ -257,6 +257,14 @@ its dash — brings 280 of the 318 numbered paragraphs under a block. The 38 tha
 listed in `meta.missing` and shown in the section list as gaps, never guessed: the entries
 whose numbers both copies destroyed (`§8–11` reads `<q. 10. 11.`, `§252–257` reads
 `2Ö2 — - s5j.`), and one entry (`§259–274`) that the reading copy lost altogether.
+
+**Why the bundle records a minimum of 0.** `meta.verification.min` is the lowest figure among the
+entries that were *checked*, not among the blocks that were *kept*. Entry `§251` scored 0.0 — neither
+copy reads its rubric — and was refused at the 0.60 floor, so it is dropped from the bundle and
+shown in the section list as one of the 38 named gaps, with `meta.verification.refused` recording
+`{"n": 251, "corroboration": 0.0}`. That is why `sections_checked` reads 99 where `blocks` reads 98.
+The 98 carried blocks are all above the floor: their median is **1.000** and their minimum **0.996**,
+not 0. A zero in this bundle means *checked and refused*, never *carried and doubtful*.
 
 **Ranges that lost an end.** Three entries print one end of a range and mangle the other
 (`J.06 — 108`, `245 — '200`, `394 — -228`). The printed end is kept. A lost end is taken

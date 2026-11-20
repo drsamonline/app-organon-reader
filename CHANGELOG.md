@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.6.8 — 2026-11-20
+
+**The provenance line becomes a function the suite holds, and one figure is corrected.**
+
+- **The sentence moved from the page into the engine.** `R.provenance(row, meta)` returns the
+  line printed under a section number as plain text; `docs/play/index.html` now only wraps it
+  in its `div` and escapes it once, whole. The page was the one part of the reader no test
+  could reach, so the claim in `data/README.md` that the reader prints the source and the
+  corroboration figure rested on markup nothing executed.
+- **Every section of all nine bundles is asserted** — source label, the kind of source, the
+  number of scans that checked it, and the figure itself, computed from each section's own
+  `corroboration`. A machine section must say it is machine text and must never read as
+  published text. A further assertion fails if the page grows its own copy of the sentence
+  again, and checks that the function leaves its arguments untouched.
+- **The sixth edition's median is 0.981, not 0.976.** `data/README.md` still quoted the figure
+  from before the bundle was rebuilt. The bundle records `median: 0.981`, and the 291
+  section-level figures give the same median. The minimum, 0.729, was already right.
+- **Why the second edition records `min` 0 is now written down.** Its `meta.verification` counts
+  what was *checked*, not what was kept: §251 scored 0.0 and was refused, so it is a named gap,
+  while all 98 carried blocks sit at 0.996 or above. `data/README.md` says so beside the gaps, so
+  the zero is not read as a fault in carried text.
+- **57 assertions** (was 47), and the `tests` badge is regenerated from the suite. The stale
+  counts in both READMEs (`40` in `data/README.md`, `46` in `README.md`) now read 57.
+
 ## 1.6.7 — 2026-11-20
 
 **The French bundle's §1 opens with its printed word.**

@@ -3,10 +3,10 @@
   "locked": false,
   "files": {
     "README.md": {
-      "sha": "0f8eddfcc9bace71d5d9c71e0d4cf8700188c7bd",
+      "sha": "31056518baafc2888c700bd61f23573e3d5dce0a",
       "producer": "buff@39b7664",
       "class": "agent",
-      "at": "2026-11-20T11:37:10Z"
+      "at": "2026-11-20T12:57:46Z"
     },
     "docs/index.html": {
       "sha": "2e268c1371f2c3147843c4c445cd9bb9165602a0",
@@ -19,7 +19,49 @@
       "producer": "audit-2026-11-10",
       "class": "canonical",
       "at": "2026-11-20T04:07:54Z"
+    },
+    "docs/reader.js": {
+      "sha": "436353d5fa92c6762377af8f7bf533a8acc81d56",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T12:57:46Z"
+    },
+    "docs/play/index.html": {
+      "sha": "98b6741ce639dc7a7d7c395cad073b04b6efa5a6",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T12:57:46Z"
+    },
+    "test-node.js": {
+      "sha": "c62bdebd67c166d64ed2f19ca254d99c68b127c2",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T12:57:46Z"
+    },
+    "data/README.md": {
+      "sha": "e43278b5232602781808e7fc3d27368091e4a700",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T13:52:35Z"
+    },
+    "CHANGELOG.md": {
+      "sha": "39e871903ffc1364054c1531776abe062f45b618",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T13:52:35Z"
+    },
+    "VERSION": {
+      "sha": "d8c5e721a77e3f86a793502efd31399521876fa2",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T12:57:46Z"
+    },
+    "docs/badges/tests.svg": {
+      "sha": "18fe6aef391077232961e9fa241b838695052f70",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T12:57:46Z"
     }
   },
-  "updated": "2026-11-20T11:37:10Z"
+  "updated": "2026-11-20T13:52:35Z"
 }

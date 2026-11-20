@@ -416,19 +416,11 @@
     });
   }
 
+  /* the sentence is R.provenance, so the suite can hold it for every section of every
+     bundle; this only wraps it for the page and escapes it once, whole. */
   function provenance(row) {
-    if (row.mt) return '<div class="hint" style="margin:-8px 0 12px">text: machine translation of the ' +
-      'German block printed beside it — generated when the bundle was built, not a published translation</div>';
-    if (!row.from) return "";
-    var sources = (BOOK.meta.scans || []);
-    var src = sources.filter(function (s) { return s.label === row.from; })[0];
-    var kind = (src && src.role === "transcription") || /^MediT/.test(row.from) ? "transcription" : "scan";
-    var tail = "";
-    if (row.corroboration != null) {
-      tail = " · corroborated against " + sources.filter(function (s) { return s.role === "scan"; }).length +
-        " scans of the same printing (" + Math.round(row.corroboration * 100) + "% of its word-runs found verbatim)";
-    }
-    return '<div class="hint" style="margin:-8px 0 12px">text from the ' + esc(row.from) + " " + kind + tail + '</div>';
+    var said = R.provenance(row, BOOK.meta);
+    return said ? '<div class="hint" style="margin:-8px 0 12px">' + esc(said) + '</div>' : "";
   }
 
   /* a block may stand for a printed range: §90–105 is one sentence under five marks */

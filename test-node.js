@@ -605,5 +605,67 @@ t("the second and third editions are different books, and neither is the sixth",
     "the two German editions are separate readings from separate scans");
 });
 
+/* ---------- the provenance line, held for every section of every bundle ---------- */
+// The reader prints this sentence under every section number; data/README.md says it does,
+// and a line nobody executes is how it goes quietly wrong. Checked against the bundle that
+// carries the section, so a row whose source label or figure drifts is caught here.
+function checkProvenance(label, book) {
+  const meta = book.meta;
+  const scans = meta.scans || [];
+  const scanCount = scans.filter(s => s.role === "scan").length;
+  for (const s of book.sections) {
+    const said = R.provenance(s, meta);
+    assert.ok(said, label + " §" + s.n + " prints no provenance");
+    assert.ok(!/undefined|\bnull\b|NaN/.test(said), label + " §" + s.n + " leaks a missing value: " + said);
+    if (s.mt) {
+      assert.ok(/machine translation of the German block/.test(said),
+        label + " §" + s.n + " must say it is machine text: " + said);
+      assert.ok(!/^text from the/.test(said), label + " §" + s.n + " must not read as published text: " + said);
+      continue;
+    }
+    assert.ok(said.startsWith("text from the " + s.from + " "),
+      label + " §" + s.n + " must name its source first: " + said);
+    const src = scans.filter(x => x.label === s.from)[0];
+    const kind = (src && src.role === "transcription") || /^MediT/.test(s.from) ? "transcription" : "scan";
+    assert.ok(said.startsWith("text from the " + s.from + " " + kind + " "),
+      label + " §" + s.n + " must say what kind of source it came from: " + said);
+    if (s.corroboration == null) {
+      assert.ok(!/corroborated/.test(said), label + " §" + s.n + " invents a figure: " + said);
+    } else {
+      assert.ok(said.includes("corroborated against " + scanCount + " scans of the same printing"),
+        label + " §" + s.n + " must count the scans that checked it: " + said);
+      assert.ok(said.includes(Math.round(s.corroboration * 100) + "% of its word-runs found verbatim"),
+        label + " §" + s.n + " must print its own figure (" + s.corroboration + "): " + said);
+    }
+  }
+}
+
+for (const [label, book] of [
+  ["sixth", BOOK], ["first", BOOK1], ["second", BOOK2], ["second (French)", BOOK2FR],
+  ["second (machine)", BOOK2MT], ["third", BOOK3], ["third (machine)", BOOK3MT],
+  ["fourth", BOOK4], ["fifth", BOOK5]
+]) {
+  t("every section of the " + label + " bundle prints its source and its corroboration", () =>
+    checkProvenance(label, book));
+}
+
+t("the provenance sentence is one pure function in the engine, and the page only wraps it", () => {
+  const html = fs.readFileSync(appPage, "utf8");
+  const engine = fs.readFileSync(path.join(docs, "reader.js"), "utf8");
+  assert.ok(/R\.provenance\s*\(/.test(html), "the page must print R.provenance, not a copy of it");
+  assert.ok(!/% of its word-runs found verbatim/.test(html), "the page must not assemble the sentence itself");
+  assert.ok(!/machine translation of the German block/.test(html), "the machine sentence must live in one place");
+  assert.ok(/corroborated against/.test(engine), "the engine must carry the sentence");
+  // pure: same input, same sentence, and neither the row nor the meta is touched
+  const row = BOOK.sections[0];
+  const before = JSON.stringify([row, BOOK.meta.scans.length]);
+  assert.strictEqual(R.provenance(row, BOOK.meta), R.provenance(row, BOOK.meta));
+  assert.strictEqual(JSON.stringify([row, BOOK.meta.scans.length]), before,
+    "provenance must not mutate what it is given");
+  assert.strictEqual(R.provenance(null, BOOK.meta), "");
+  assert.strictEqual(R.provenance({ n: 1, text: "x" }, BOOK.meta), "",
+    "a row with no recorded source prints nothing rather than a guess");
+});
+
 console.log("\n" + pass + "/" + (pass + fail) + " assertions passed");
 process.exit(fail ? 1 : 0);
