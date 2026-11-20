@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.5 — 2026-11-20
+
+**§31's fragment was a printed sub-item, not a lost range end.**
+
+- **The Inhaltsanzeige page settles it.** Book page 18 (reading-copy leaf 27) prints
+  `31. I. Die ältere, im Körper wohnende Krankheit hält…`, then `32. So heilen auch nie
+  unhomöopathische Curen…`, and the entry after that opens `33. II. Oder eine…`. There is no
+  range at §31 and no end to restore: OCR wrote the full stop after `31.` as a dash, which
+  made the entry's own `I.` look like a number that failed to read.
+- **1.6.4 over-corrected, and is corrected here.** Its strip took that printed `I.` away with
+  §181's real fragment. A Roman sub-item after a number is now read as prose, so §31 carries
+  `I. Die ältere…` again while §181 keeps its clean `Mafsregeln…`. The machine translation is
+  re-mapped (`I. The older disease…`), not re-run, so its build stamp stands.
+- **No figures change.** 98 blocks, 280 of 318 numbered paragraphs covered, 38 named gaps, 46
+  assertions; §31 remains a single-number block and §32–41 were already carried one by one.
+
 ## 1.6.4 — 2026-11-20
 
 **The mangled number that stood for a lost range end is no longer carried as text.**

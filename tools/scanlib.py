@@ -276,6 +276,16 @@ def mark_readings(line, max_n):
                                   all(b > a for a, b in zip(nums, nums[1:]))):
                 out.append((tuple(nums), False, False, r))
                 continue
+        # `31. I. Die ältere …` is one entry with a printed sub-item, not a range with a
+        # lost end: OCR writes the full stop after the number as a dash, so the Roman
+        # numeral looks like a number that failed to read. It is the rubric's own word
+        # (the 1819 page prints `31. I.`, `33. II.`, `35. III.`), so the entry is whole.
+        if nums and len(nums) == 1:
+            sub = re.match(r"^([IVXLC]{1,4})\s*[—–-]+\s*", r)
+            if sub:
+                out.append((tuple(nums), False, False,
+                            sub.group(1) + ". " + r[sub.end():]))
+                continue
         # a range that cannot be read whole still keeps the end printed first. The
         # token where the end was lost is not text: `181 — igS- Mafsregeln` prints its
         # rubric as `Mafsregeln …`, so the lost number is dropped with the dash.
