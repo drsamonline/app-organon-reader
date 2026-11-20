@@ -248,10 +248,12 @@ def mark_readings(line, max_n):
         elif not rest or rest[0] not in BARE_ONE:
             continue
         nums, r, toks = [], rest, []
+        pending = False        # the separator just consumed a range dash
         while len(nums) < 4:
             m = MARK_TOKEN.match(r)
             if not m:
                 break
+            pending = bool(re.search(r"[—–-]", m.group(0)[len(m.group(1)):]))
             tok = m.group(1)
             # a lone letter that begins a word is a word, not a number (`Für`)
             if len(tok) == 1 and tok.isalpha() and r[m.end():m.end() + 1].isalpha():
@@ -261,12 +263,15 @@ def mark_readings(line, max_n):
                 break
             nums.append(n)
             toks.append(tok)
+            pending = False
             r = r[m.end():]
         # a reading that kept a leading letter must still show a real digit somewhere,
         # otherwise any word beginning with `i` would read as a number (`ist` = 151)
         if keep and not any(c.isdigit() for t in toks for c in t):
             nums = []
-        if nums and _prose(r):
+        # `181 — igS- …` stopped inside a range, not at the rubric: the reading broke
+        # immediately after a printed dash, so that end was lost, not closed.
+        if nums and not pending and _prose(r):
             if len(nums) == 1 or (max(nums) - min(nums) <= 40 and
                                   all(b > a for a, b in zip(nums, nums[1:]))):
                 out.append((tuple(nums), False, False, r))
@@ -334,7 +339,7 @@ def overview_entries(path, max_n, body=None, end_matter=None, drop=None):
     return out
 
 
-def resolve_entries(entries, max_n=319, known=None):
+def resolve_entries(entries, max_n=319, known=None, witness=None):
     """Settle each entry's numbers, by what is printed first and by order second.
 
     Every reading of a line is offered; the one kept is the one whose first number
@@ -342,12 +347,17 @@ def resolve_entries(entries, max_n=319, known=None):
     face, 154 with the leading `j` kept) is settled: 54 would run backwards.
 
     A range that lost one end to OCR keeps the end that was printed. The lost end is
-    taken from the entry beside it (`181 — igS` ends where the next entry begins; the
-    entry before `394 — 228` ends where this one begins) — the printed list enumerates
-    the paragraphs in order, and Brunnow's French contents list prints every one of
-    them, so the numbering has no hole for an entry to fall into. Each restored end is
-    recorded on the entry (`restored`), never silently applied, and an end that cannot
-    be settled that way stays unknown and becomes a named gap.
+    taken first from the other copy of the printing (`witness`, matched by its rubric),
+    and otherwise from the entry beside it (`181 — igS` ends where the next entry
+    begins; the entry before `394 — 228` ends where this one begins) — the printed list
+    enumerates the paragraphs in order, so the numbering has no hole for an entry to
+    fall into. Each restored end is recorded on the entry (`restored`), never silently
+    applied, and an end that cannot be settled that way stays unknown and becomes a
+    named gap.
+
+    The neighbour rule is only used where Brunnow's French contents list can check the
+    range it would cover. Without that list (`known is None`) nothing is restored: the
+    build fails closed to named gaps rather than guessing.
     """
     last = 0
     for e in entries:
@@ -366,11 +376,37 @@ def resolve_entries(entries, max_n=319, known=None):
         if chosen:
             last = chosen["numbers"][-1]
     def corroborated(span):
-        """Every number of the span is printed in the French contents list."""
+        """Every number of the span is printed in the French contents list.
+
+        A missing list corroborates nothing: the restoration fails closed.
+        """
         if known is None:
-            return True
+            return False
         have = sum(1 for n in span if n in known)
         return have >= 0.85 * len(span)
+
+    # the other copy of the same printing prints the end this one lost
+    numbered_witness = [w for w in witness or () if w.get("numbers")]
+    if numbered_witness:
+        for e in entries:
+            if not e["numbers"] or not (e["open_start"] or e["open_end"]):
+                continue
+            w = same_entry(e, numbered_witness)
+            wn = (w or {}).get("numbers") or []
+            if len(wn) < 2:
+                continue
+            if (e["open_end"] and wn[0] == e["numbers"][0]
+                    and wn[-1] > e["numbers"][-1]):
+                e["numbers"].append(wn[-1])
+                e["open_end"] = False
+                e["restored"].append({"end": wn[-1],
+                                      "from": "the second copy of the printing"})
+            if (e["open_start"] and wn[-1] == e["numbers"][-1]
+                    and wn[0] < e["numbers"][0]):
+                e["numbers"].insert(0, wn[0])
+                e["open_start"] = False
+                e["restored"].append({"start": wn[0],
+                                      "from": "the second copy of the printing"})
 
     for k, e in enumerate(entries):
         nxt = entries[k + 1] if k + 1 < len(entries) else None
@@ -393,9 +429,13 @@ def resolve_entries(entries, max_n=319, known=None):
 
 
 def bundle_numbers(path):
-    """The paragraph numbers a bundle already built from a scan carries."""
+    """The paragraph numbers a bundle already built from a scan carries.
+
+    Returns None when the bundle is not there, which `resolve_entries` reads as "no
+    corroboration": the range ends are then left as named gaps.
+    """
     if not os.path.exists(path):
-        print(f"  !! {path} not built — the range ends cannot be corroborated")
+        print(f"  !! {path} not built — no range end will be restored (they stay gaps)")
         return None
     text = open(path, encoding="utf-8").read()
     text = text[text.index("return ") + 7:text.rindex("};") + 1]
@@ -407,22 +447,27 @@ def words(text):
     return [w for w in (letters(x) for x in re.split(r"\s+", text)) if len(w) >= 4]
 
 
-def same_entry(text, others, take=8, need=0.75):
-    """The entry in a second scan of the same printing that prints the same words.
+def same_entry(entry, others, take=8, need=0.75):
+    """The entry in a second scan of the same printing that prints the same line.
 
-    A contents entry is one line of rubric, so its opening words identify it. A second
-    scan is only used when its opening words agree (`need`), and only the numbers are
-    taken from it — never its text.
+    The comparison is on the entry's *printed line* — the rubric as it stands on one
+    line of the page — because that is what two scans of the same page read alike: a
+    scan that breaks a word across lines (`Krank-` / `heiten`) still matches on the
+    words the line does print. A line too short to identify itself falls back to the
+    entry's opening words. Only the numbers are taken from the second scan, never its
+    text.
     """
-    mine = words(text)[:take]
+    mine = set(words(entry["printed"]))
+    if len(mine) < 3:
+        mine = set(words(entry["text"])[:take])
     if len(mine) < 3:
         return None
     best, best_score = None, 0.0
     for other in others:
-        theirs = set(words(other["text"])[:take])
+        theirs = set(words(other["printed"])) or set(words(other["text"])[:take])
         if not theirs:
             continue
-        score = len(set(mine) & theirs) / len(mine)
+        score = len(mine & theirs) / len(mine)
         if score > best_score:
             best, best_score = other, score
     return best if best_score >= need else None

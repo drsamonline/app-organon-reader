@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.6.2 — 2026-11-20
+
+**The 1819 list's local-ailment entry is §194–228, not §182–228; range ends are now borrowed
+from the second copy for real, and the restoration fails closed without the French.**
+
+- **A restored start that was wrong is corrected.** The reading copy prints the entry's start
+  as `394` and its end as `228`. 1.6.1 restored the start from the entry beside it while that
+  entry was still truncated to `§181`, giving §182–228 — a 46-number span, and a start that
+  collided with the range above it. The second copy prints that entry whole, `181 — 193.`, so
+  the local-ailment entry begins at §194, where Brunnow's §194 opens the same subject. The
+  bundle now carries §181–193 and §194–228; `§182` is not a block start.
+- **The second copy now actually settles numbers, and the claim is no longer empty.** 1.6.1
+  printed "numbers settled by the second copy: 0": the entry match compared only the opening
+  words of a rubric, so a scan that breaks a word across lines (`Krank-` / `heiten`) never
+  matched the reading copy's line. It compares the printed line instead, matches `l8l — igS`
+  against `181 — 193.`, and `meta.numbered_from_second_copy` is now 1 — counted from the
+  blocks that record it in `numbers_from`, not asserted.
+- **Range-end restoration fails closed.** With `docs/organon2-fr-data.js` absent there is no
+  corroboration, so no end is restored: the build prints that it will restore nothing and
+  leaves those numbers as named gaps (232 covered, 86 gaps) instead of reading "not built" as
+  consent. Nothing else about the build depends on the French.
+- **Figures.** 98 blocks covering 280 of 318 numbered paragraphs, 38 named gaps — unchanged;
+  the widest carried range drops from 46 numbers to 34, so the suite's range guard is back to
+  40. The suite is unchanged at 46 assertions, now with four more checks on this boundary.
+- **The machine-translation bundle follows the German blocks** under the corrected numbers,
+  carrying the same English for the same rubric; the translation itself was not re-run.
+
 ## 1.6.1 — 2026-11-19
 
 **The 1819 German now says what it is, and carries 280 of 318 numbered paragraphs instead of
@@ -11,14 +38,15 @@
   later, and both surviving scans read the body's pages across the fold — a paragraph's tail
   lands inside the next one — so they are not carried. Title, notes, the reader's book blurb
   and `data/README.md` now name the part correctly.
-- **More of the numbering recovered.** §110–119, §182–228 and §245–250 came back: an entry
-  whose range lost one end to OCR keeps the end that was printed, and the lost end is taken
-  from the entry beside it only where Brunnow's French contents list prints every number the
-  restored range would cover. Each restored block records it in `numbers_from`.
+- **More of the numbering recovered.** §110–119 and §245–250 came back: an entry whose range
+  lost one end to OCR keeps the end that was printed, and the lost end is taken from the
+  entry beside it only where Brunnow's French contents list prints every number the restored
+  range would cover. Each restored block records it in `numbers_from`. (A third, §182–228,
+  was restored the same way and was wrong — see 1.6.2.)
 - **A tolerant reader for printed number lines** (`tools/scanlib.py`): `J.06` is 106, `j54`
   is 154, `l5g` is 159, a full stop printed inside a number is folded away, junk between a
-  number and its dash no longer hides the range. The second 1819 copy is now read for its
-  numbers as well as its words.
+  number and its dash no longer hides the range. The second 1819 copy is read as well, for
+  its words — and, from 1.6.2, for the range ends the reading copy mangled.
 - **Gaps named, not filled.** 38 numbers remain unreadable in both copies — `§8–11`, `§13`,
   `§14`, `§42–44`, `§47`, `§67`, `§68`, `§72`, `§78`, `§251–257`, `§259–274`, `§311` — and
   are listed in `meta.missing` and shown as gaps.

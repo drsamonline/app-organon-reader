@@ -17,13 +17,15 @@ offer the contents list as if it were the text.
 The numbering comes from two copies of the 1819 printing. `organonderheilku01hahn` is the
 reading copy; `10476160bsb` (Bayerische Staatsbibliothek) reads several margin numbers the
 reading copy mangled (`181 — 193.` where the other has `l8l — igS`), and it corroborates
-the words of every block.
+the words of every block. A range end the reading copy lost is taken from that copy when
+the two entries print the same rubric, and the borrow is recorded in `numbers_from`.
 
-A range that lost one end to OCR keeps the end that was printed. The lost end is taken
+A range that still lost one end keeps the end that was printed. The lost end is taken
 from the entry beside it — the list enumerates the paragraphs in order — and only when
 Brunnow's French contents list, which prints every paragraph 1–318, has the numbers the
-restored range would cover. Every restored end is recorded on its block (`numbers_from`);
-anything that cannot be settled that way stays a named gap.
+restored range would cover. If that bundle is not built there is no corroboration, and
+nothing is restored: the numbers stay named gaps. Every restored end is recorded on its
+block (`numbers_from`); anything that cannot be settled that way stays a named gap.
 
     ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon2.py
 """
@@ -51,7 +53,7 @@ SOURCES = [
     {"ident": "10476160bsb", "path": "organon2/10476160bsb.txt",
      "label": "Hahnemann-1819-BSB", "require": (), "refuse": ("WILLIAM BOERICKE",),
      "edition": "second edition (1819), Hahnemann's German, a second copy",
-     "role": "second copy: reads margin numbers the other mangles",
+     "role": "second copy: reads range ends the other mangles",
      "body": BODY_BSB},
 ]
 
@@ -72,10 +74,11 @@ NOTES = [
     "statements. Each block is carried under its first number with the range recorded; "
     "nothing inside the range is invented or duplicated.",
     "Two copies of the 1819 printing were read. Where the reading copy's margin number is "
-    "destroyed, the second copy's number is used; where a range lost one end, that end is "
-    "taken from the entry beside it, and only if Brunnow's French contents list prints "
-    "every number the restored range would cover. Each such block records where its "
-    "number came from. Everything else is a named gap.",
+    "destroyed, a range end is taken from the second copy when both print the same rubric; "
+    "where a range lost one end and the second copy cannot supply it, that end is taken "
+    "from the entry beside it, and only if Brunnow's French contents list prints every "
+    "number the restored range would cover. Each such block records where its number came "
+    "from. Everything else is a named gap.",
 ]
 
 
@@ -113,26 +116,22 @@ def main():
         entries_by_label[src["label"]] = entries
         scans.append(meta)
     known = scanlib.bundle_numbers(FRENCH)
+    label = "Hahnemann-1819-BN" if "Hahnemann-1819-BN" in entries_by_label \
+        else next(iter(entries_by_label), None)
     for entries in entries_by_label.values():
         scanlib.resolve_entries(entries, MAX, known=known)
+    # second pass, the other copy in hand: an end borrowed there changes where the entry
+    # after it begins, so the neighbouring entries must be settled again afterwards
+    for lab, entries in entries_by_label.items():
+        others = [e for other, es in entries_by_label.items() if other != lab for e in es]
+        if others:
+            scanlib.resolve_entries(entries, MAX, known=known, witness=others)
 
-    primary = entries_by_label.get("Hahnemann-1819-BN") or next(iter(entries_by_label.values()))
-    print(f"  french contents list: {len(known or ()) } numbered paragraphs (corroboration)")
-
-    # the second copy can settle an entry the reading copy could not number at all
-    others = [e for lab, es in entries_by_label.items() if lab != "Hahnemann-1819-BN"
-              for e in es]
-    borrowed = 0
-    if others:
-        for e in primary:
-            if e["numbers"]:
-                continue
-            w = scanlib.same_entry(e["text"], others)
-            if w and w["numbers"]:
-                e["numbers"] = list(w["numbers"])
-                e["restored"].append({"numbers": list(w["numbers"]),
-                                      "from": "the second copy of the printing"})
-                borrowed += 1
+    primary = entries_by_label.get(label) or []
+    print(f"  french contents list: {len(known or ())} numbered paragraphs (corroboration)")
+    # a number taken from the other copy of the printing, recorded on the block itself
+    borrowed = sum(1 for e in primary for r in e["restored"]
+                   if "second copy" in r["from"])
     print(f"  numbers settled by the second copy: {borrowed}")
 
     blocks = []

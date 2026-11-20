@@ -480,9 +480,9 @@ t("a printed range is carried as a range, and every number it covers is covered"
     const covered = new Set();
     for (const s of book.sections) {
       assert.ok(s.to >= s.n, "§" + s.n + " ends before it starts (" + s.to + ")");
-      // the widest printed range is the 1819 list's §182–228 (46 numbers), whose start is
-      // restored from the entry beside it; anything wider is a parser fault
-      assert.ok(s.to - s.n <= 55, "§" + s.n + " claims an impossible range to " + s.to);
+      // the widest printed range is the 1819 list's §194–228 (34 numbers), whose start is
+      // restored from the printed end of the entry before it; anything wider is a fault
+      assert.ok(s.to - s.n <= 40, "§" + s.n + " claims an impossible range to " + s.to);
       for (let k = s.n; k <= s.to; k++) covered.add(k);
     }
     const expected = [];
@@ -513,8 +513,19 @@ t("the second edition is Hahnemann's German of 1819, and says it has no English 
         "§" + s.n + " restores a number and must record where it came from");
     }
   }
-  assert.strictEqual(BOOK2.meta.numbered_from_second_copy, 0,
-    "the second copy settled no number today; the figure is recorded, not assumed");
+  // the second copy of the printing reads the range end the reading copy destroyed
+  // (§181 — igS is §181–193 there); the figure counts the blocks that record it
+  const fromSecond = BOOK2.sections.filter(s =>
+    (s.numbers_from || []).some(r => /second copy/.test(r.from))).length;
+  assert.strictEqual(BOOK2.meta.numbered_from_second_copy, fromSecond,
+    "the recorded count must be the number of blocks that took a number from the second copy");
+  assert.ok(fromSecond >= 1, "the second copy must settle at least one number, not none");
+  // the 1819 list's local-ailment entry is §194–228, not §182–228: the entry before it
+  // ends at §193 (second copy), so the restored start is 194. Keeping 182 was a fault.
+  assert.strictEqual(index2.byNumber[181].to, 193, "§181 must end where the second copy reads it");
+  assert.ok(index2.byNumber[194], "the local-ailment entry must start at §194");
+  assert.strictEqual(index2.byNumber[194].to, 228, "and it ends at the printed 228");
+  assert.ok(!BOOK2.sections.some(s => s.n === 182), "no block may begin at §182");
   assert.ok(/Public domain/i.test(BOOK2.meta.licence));
   for (const s of BOOK2.meta.scans) {
     assert.ok(/second edition/i.test(s.edition), s.label + " must be the second edition");

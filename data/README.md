@@ -227,7 +227,7 @@ would be worse. The reader prints `§90–105`.
 | Work | *Organon der Heilkunst* (1819) | *Organon der Heilkunst* (1824) | *Organon de l'art de guérir* (1824) |
 | Language | German | German | French |
 | Reading text | `organonderheilku01hahn` | `organonderheilku02hahn` | `b2930538x` |
-| Second copy | `10476160bsb` — numbers and corpus | `organonderheilk01hahngoog` | `bub_gb_Qr_z-ZNDW48C` |
+| Second copy | `10476160bsb` — range ends and corpus | `organonderheilk01hahngoog` | `bub_gb_Qr_z-ZNDW48C` |
 | Numbered to | §318 | §320 | §318 |
 | Blocks carried | 98 | 297 | 314 |
 | Numbered paragraphs covered | 280 of 318 | 307 of 320 | 314 of 318 |
@@ -249,8 +249,9 @@ paragraphs broken. Brunnow's French beside it carries the paragraphs, 314 of 318
 
 **Why the 1819 German is still only mostly there.** The reading copy
 (`organonderheilku01hahn`) mangles margin numbers (`§106` came out as `J.06`, `§110` as `JlO`,
-`§181` as `l8l`); the second copy (`10476160bsb`, Bayerische Staatsbibliothek) reads several
-of them where the other cannot, but not all. Reading the list tolerantly — a leading `J` or
+`§181` as `l8l`); the second copy (`10476160bsb`, Bayerische Staatsbibliothek) reads some of
+them whole where the other cannot (`181 — 193.` for `l8l — igS`), but not all. Reading the
+list tolerantly — a leading `J` or
 `j` kept as `1`, a full stop printed inside a number folded away, junk between a number and
 its dash — brings 280 of the 318 numbered paragraphs under a block. The 38 that remain are
 listed in `meta.missing` and shown in the section list as gaps, never guessed: the entries
@@ -258,12 +259,20 @@ whose numbers both copies destroyed (`§8–11` reads `<q. 10. 11.`, `§252–25
 `2Ö2 — - s5j.`), and one entry (`§259–274`) that the reading copy lost altogether.
 
 **Ranges that lost an end.** Three entries print one end of a range and mangle the other
-(`J.06 — 108`, `245 — '200`, `394 — -228`). The printed end is kept; the lost end is taken
-from the entry beside it — the list enumerates the paragraphs in order — and only when
-Brunnow's French contents list, which prints every paragraph 1–318, has every number the
-restored range would cover. Each such block records it in `numbers_from`, and the count is
-in `meta`; nothing is restored silently. Today that recovers §110–119, §182–228 and
-§245–250.
+(`J.06 — 108`, `245 — '200`, `394 — -228`). The printed end is kept. A lost end is taken
+first from the other copy of the printing, where it prints the same rubric whole
+(`181 — 193.` for `l8l — igS`), and otherwise from the entry beside it — the list
+enumerates the paragraphs in order — and only when Brunnow's French contents list, which
+prints every paragraph 1–318, has every number the restored range would cover. **When that
+bundle is missing the build restores nothing**: it fails closed, and the numbers stay named
+gaps. Each such block records where its number came from in `numbers_from`, and the count
+is in `meta`; nothing is restored silently. Today that recovers §110–119, §181–193 (the end
+from the second copy), §194–228 and §245–250.
+
+The local-ailment entry is **§194–228, not §182–228**. Version 1.6.1 restored its start from
+the entry beside it while that entry was still truncated to `§181`; read whole, the entry
+runs to `§193`, so the next one begins at `§194` — where Brunnow's §194 opens the same
+subject ("les maux locaux"). `§182` is not a block start.
 
 **Why the 1824 German is nearly whole.** Both copies read their marks (`organonderheilku02hahn`
 and Google's `organonderheilk01hahngoog`), so 297 blocks covering 307 of 320 paragraphs were
@@ -285,8 +294,8 @@ bundle also does not carry the 1819 paragraphs (see above) — only the list tha
     ORGANON_SRC=. PYTHONPATH=tools python3 tools/build-organon3.py
 
 The French build runs first: `tools/build-organon2.py` corroborates the restored range ends
-against the paragraph numbers in `docs/organon2-fr-data.js`, and falls back to leaving them
-gaps if that bundle is not there.
+against the paragraph numbers in `docs/organon2-fr-data.js`, and if that bundle is not there
+it restores nothing at all — the uncorroborated ends stay named gaps.
 
 ## The machine translations — generated text, quarantined
 
