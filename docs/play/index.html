@@ -108,6 +108,18 @@
     text-transform:uppercase;border:1px solid var(--rule);color:var(--acc);border-radius:999px;
     padding:2px 9px;margin:0 6px 10px 0}
   .edchip.same{border-color:var(--ok);color:var(--ok)}
+
+  /* the concordance: a map of the numbering, not a merged text */
+  .map{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px;margin:8px 0 0}
+  .map th,.map td{border-bottom:1px solid var(--line);padding:2px 5px;text-align:center;line-height:1.5}
+  .map thead th{position:sticky;top:58px;background:var(--bg);color:var(--mut);font-weight:400;
+    letter-spacing:.06em;border-bottom:1px solid var(--rule)}
+  .map tbody th{text-align:right;color:var(--acc);font-weight:400;font-variant-numeric:tabular-nums;width:46px}
+  .map td.hit{color:var(--acc);cursor:pointer;font-size:13px}
+  .map td.hit:hover,.map td.hit:focus{background:var(--soft);outline:1px solid var(--acc)}
+  .map td.miss{color:var(--mut)}
+  .map td.beyond{color:var(--line)}
+  .mapwrap{max-height:60vh;overflow:auto;border:1px solid var(--line);border-radius:3px}
   footer{padding:14px 34px;color:var(--mut);font-size:12px;font-family:var(--mono);
     border-top:1px solid var(--line)}
   @media (max-width:760px){
@@ -169,6 +181,9 @@
 
     <h2>Bookmarks</h2>
     <div id="bms"><div class="hint">None yet. Open a section and press Bookmark.</div></div>
+
+    <h2>The map</h2>
+    <button class="ghost" id="map" type="button">Which book carries what</button>
 
     <h2>Your data</h2>
     <button class="ghost" id="exp">Export bookmarks &amp; notes</button>
@@ -485,6 +500,69 @@
     $("jump").value = "";
   }
 
+  /* ---- the concordance: every numbered paragraph, and which books carry it ---- */
+  /* The machine translations are not given columns: each covers exactly the blocks of
+   * the German beside it, so a column would say only what DE2 and DE3 say already. */
+  var MAP_BOOKS = [
+    ["first", "E1"], ["fourth", "E4"], ["fifth", "E5"], ["sixth", "E6"],
+    ["second", "DE2"], ["third", "DE3"], ["secondFr", "FR"]
+  ];
+
+  function showMap() {
+    var books = MAP_BOOKS.map(function (pair) {
+      var ed = EDITIONS[pair[0]];
+      return { key: pair[0], label: pair[1], meta: ed.book.meta, sections: ed.book.sections };
+    });
+    var map = R.concordance(books);
+    var head = '<tr><th>\u00a7</th>' + books.map(function (b) {
+      return '<th title="' + esc(EDITIONS[b.key].sub) + '">' + b.label + '</th>';
+    }).join("") + '</tr>';
+    var body = map.rows.map(function (row) {
+      return '<tr><th>' + row.n + '</th>' + books.map(function (b) {
+        var at = row.books[b.key];
+        if (at) {
+          return '<td class="hit" tabindex="0" data-key="' + b.key + '" data-n="' + at.start +
+            '" title="' + esc(at.label + " \u2014 open in the " + EDITIONS[b.key].name + " edition") + '">\u25cf</td>';
+        }
+        var to = EDITIONS[b.key].book.meta.total_in_book || 0;
+        return row.n > to
+          ? '<td class="beyond" title="this edition numbers only to \u00a7' + to + '">\u00b7</td>'
+          : '<td class="miss" title="not carried: the section mark could not be read in the scans">\u00b7</td>';
+      }).join("") + '</tr>';
+    }).join("");
+
+    $("results").innerHTML = "";
+    $("view").innerHTML =
+      '<div class="navrow">' +
+        '<div class="secnum">Concordance \u00a71\u2013' + map.total + '</div>' +
+        '<div class="spacer"></div>' +
+        '<button class="ghost" id="back">Back to the text</button>' +
+      '</div>' +
+      '<p class="hint">A map of the numbering, not a merged text: each column is one book, and a filled cell ' +
+        'means that book prints the paragraph. Click a cell to open that book at the block it prints it in; a block ' +
+        'printed as a range (\u00a790\u2013105) fills every number the page prints with it. A dot is a number the ' +
+        'book does not carry, and a faint dot is past the end of that book\u2019s own numbering.</p>' +
+      '<p class="edlab">' + books.map(function (b) {
+        return b.label + ' ' + map.counts[b.key];
+      }).join(" \u00b7 ") + ' of ' + map.total + ' numbered paragraphs</p>' +
+      '<p class="hint">The machine translations take no column: each covers exactly the blocks of the German ' +
+        'beside it, so its column would repeat DE2 or DE3.</p>' +
+      '<div class="mapwrap"><table class="map"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+
+    function open(target) {
+      var key = target.dataset.key, n = Number(target.dataset.n);
+      if (key !== KEY) { $("edition").value = key; openEdition(key); }
+      show(n);
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('#view .map td.hit'), function (el) {
+      el.onclick = function () { open(el); };
+      el.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(el); } };
+    });
+    $("back").onclick = function () {
+      show(state.last && index.byNumber[state.last] ? state.last : nums[0]);
+    };
+  }
+
   function persist(next) {
     var res = store.commit(next);
     if (res.ok) { state = next; renderBookmarks(); return true; }
@@ -544,6 +622,7 @@
 
   $("go").onclick = runSearch;
   $("q").onkeydown = function (e) { if (e.key === "Enter") runSearch(); };
+  $("map").onclick = showMap;
   $("jumpgo").onclick = jump;
   $("jump").onkeydown = function (e) { if (e.key === "Enter") jump(); };
   $("exp").onclick = function () {

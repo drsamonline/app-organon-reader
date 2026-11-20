@@ -1,7 +1,7 @@
 <!-- badges:start -->
 <p align="center">
   <img src="docs/badges/live.svg" alt="live: online">
-  <img src="docs/badges/tests.svg" alt="tests: 57/57">
+  <img src="docs/badges/tests.svg" alt="tests: 75/75">
   <img src="docs/badges/offline.svg" alt="offline: 0 requests">
   <img src="docs/badges/deps.svg" alt="deps: 0">
   <img src="docs/badges/editions.svg" alt="editions: 6 editions">
@@ -34,6 +34,8 @@
 
 **Nine books, and it never confuses them.** The edition selector in the header switches the whole book — text, section list, search and bookmarks. Between the English editions, every section says how it stands against the edition it is read beside: *only in the fifth edition*, *wording differs from the sixth edition*, or *same wording as the sixth edition*. A German, French or machine-translated book is not compared by wording with an English one — that would report every section as different and mean nothing — so it says what it is instead: *Hahnemann's German of 1819 — this edition has no English translation*, or *machine translation — generated text*. Each book keeps its own bookmarks and notes, because a note on §153 means a different paragraph in each.
 
+**The numbering, mapped.** One view sets the books' paragraph numbers beside one another, 1 to 320 — the widest book — and says which editions print each number. Each cell opens that book at the block that prints it, including a block printed as a range (`§90–105`). It is a map, not a merged text: nothing is filled in from another edition, so a number a book does not carry stays empty, and a machine translation takes no column of its own because it covers exactly its German blocks.
+
 It is a reader, not an interpreter. It presents the text, finds a phrase in it instantly, and keeps your bookmarks and notes on your own device. It does not summarise, advise, or explain Hahnemann.
 
 Search is phrase search over the bundled text. Type `vital force` and every section that contains it is listed, best match first, each with its section number and the line it matched. Every section is in the left-hand list — click one, or type a number into the § box to jump. In the text you can walk the book with **Next / Previous**, or the ← and → keys, and the reader steps over a section it does not carry rather than stopping dead at the gap. Open a section and you can bookmark it or write a note; both are stored locally and both come back on the next visit. Under each section number the reader names the scan that section was read from.
@@ -63,8 +65,9 @@ Search is phrase search over the bundled text. Type `vital force` and every sect
 Open `docs/index.html` — that is the whole app. It works from `file://` and from GitHub Pages, because everything it needs sits beside it.
 
 ```
-node test-node.js        # the suite: 57 assertions, no dependencies
+node test-node.js        # the suite: 75 assertions, no dependencies
 python3 scripts/badges.py   # redraw the badges above, and the block in this file, from the books' own numbers
+node tools/fingerprint.js check   # the carried text still matches data/fingerprints.json
 ```
 
 Rebuilding the bundled text from the scans is described in [`data/README.md`](data/README.md), which records every item used, the SHA-256 of each OCR file, the sections that remain unreadable in each edition, and why other scans were rejected (one cannot read its own marks; another is a different translation).

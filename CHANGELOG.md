@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.6.9 — 2026-11-20
+
+**Three guards on the books themselves: the figures, the carried text, and the numbering.**
+
+- **The documents' figures are now checked against the bundles.** `README.md` and
+  `data/README.md` quote the carried counts, medians, minima and named gaps of every edition;
+  prose is not compiled, and the sixth edition's median was quoted as 0.976 for a while after
+  the bundle said 0.981. Each of those sentences is now a claim in the suite with its figures
+  captured and compared to the bundle that owns them, including the fifth-versus-sixth counts
+  (`74` reworded, `§292–§294` only in the fifth), the 1819 list's `280 of 318`, the min-0 note's
+  `99` checked against `98` blocks and its refused `§251`, and the assertion count both
+  documents print against the `tests` badge. A reworded sentence fails too, so a figure and
+  the sentence carrying it move together.
+- **A rebuild that changes carried text now fails until it is recorded.** The OCR is not
+  committed, so no CI job can rebuild the nine books and compare; `data/fingerprints.json`
+  instead freezes every carried block — number, printed range end, source label, corroboration,
+  text, printed notes and machine flag — and `node test-node.js` refuses any bundle whose blocks
+  no longer match, naming the sections that moved. `tools/fingerprint.js record --note "why"`
+  is the deliberate act that re-records them, and the note is the record of why.
+- **The numbering across the books is finally visible.** A concordance view sets §1–320 (the
+  widest book, the 1824 German) beside seven columns — Wheeler, Devrient, Dudgeon, Boericke,
+  the two German editions and Brunnow's French — and every cell opens that book at the block
+  that prints the number, ranges included. It is a map, not a merged text: no cell is filled in
+  from another edition, a number a book does not carry stays empty, and the machine
+  translations take no column because each covers exactly its German blocks. The matrix comes
+  from `R.concordance` in the engine, and the suite checks each column against the bundle's own
+  `numbered_paragraphs_carried` and `missing` list.
+- **The map found a duplicated number in the 1824 bundle.** §124 is printed inside the Google
+  copy's `§123–124` block *and* under its own mark in the BN copy, so the bundle carries §124
+  twice, with different text. The map opens the block that prints the number under its own mark
+  and reaches the range from its first number; the duplication itself is recorded here rather
+  than quietly resolved.
+- **75 assertions** (was 57), and the `tests` badge is regenerated from the suite.
+
 ## 1.6.8 — 2026-11-20
 
 **The provenance line becomes a function the suite holds, and one figure is corrected.**

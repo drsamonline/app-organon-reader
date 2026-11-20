@@ -667,5 +667,288 @@ t("the provenance sentence is one pure function in the engine, and the page only
     "a row with no recorded source prints nothing rather than a guess");
 });
 
+/* ---------- the figures the documents quote are the bundles' own ----------
+ * Every number README.md and data/README.md print about the books is a promise the
+ * repository makes about its own data, and prose is not compiled: the sixth edition's
+ * median was quoted as 0.976 for weeks while the bundle said 0.981. Each claim below
+ * is a sentence with its figures captured, checked against the bundle that owns them.
+ * A reworded sentence fails too: the figures and the claim move together, on purpose. */
+const ver = b => (b.meta && b.meta.verification) || {};
+const covered = b => b.meta.numbered_paragraphs_carried != null
+  ? b.meta.numbered_paragraphs_carried : b.meta.recovered;
+
+function sameNumber(text, value) {
+  const n = Number(text);
+  if (!Number.isFinite(n) || typeof value !== "number" || !Number.isFinite(value)) return false;
+  const decimals = (String(text).split(".")[1] || "").length;
+  if (decimals === 0) return n === value;
+  return Math.abs(n - value) < 0.5 / Math.pow(10, decimals) + 1e-9;
+}
+
+function checkDoc(file, claims) {
+  const text = fs.readFileSync(path.join(__dirname, file), "utf8");
+  for (const c of claims) {
+    const m = c.pattern.exec(text);
+    assert.ok(m, file + ": the sentence carrying \u201c" + c.what + "\u201d is gone or reworded \u2014 " +
+      "update the claim in test-node.js rather than the figure");
+    c.expect.forEach((want, i) => {
+      assert.ok(sameNumber(m[i + 1], want),
+        file + " says " + m[i + 1] + " for " + c.what + ", the bundle says " + want);
+    });
+  }
+}
+
+// how the fifth and the sixth editions stand against each other, computed once
+const FIFTH_DIFF = (() => {
+  const six = {};
+  BOOK.sections.forEach(s => { six[s.n] = R.norm(s.text); });
+  let differ = 0;
+  const onlyFifth = [];
+  BOOK5.sections.forEach(s => {
+    if (!(s.n in six)) onlyFifth.push(s.n);
+    else if (six[s.n] !== R.norm(s.text)) differ++;
+  });
+  return { differ, onlyFifth };
+})();
+
+// the carried blocks of the second edition, which the min-0 note quotes
+t("the figures README.md quotes about the books are the bundles' own", () => {
+  checkDoc("README.md", [
+    { what: "the sixth edition is complete", pattern: /All (\d+) sections are present\./,
+      expect: [BOOK.meta.total_in_book] },
+    { what: "the sixth edition's median coverage", pattern: /\(median (\d+)% of its word-runs\)/,
+      expect: [Math.round(ver(BOOK).median * 100)] },
+    { what: "the fifth edition's corroboration and length",
+      pattern: /median \*\*([0-9.]+)\*\*, minimum \*\*([0-9.]+)\*\*, every one of its \*\*(\d+) sections\*\*/,
+      expect: [ver(BOOK5).median, ver(BOOK5).min, BOOK5.meta.total_in_book] },
+    { what: "the fourth edition's carried aphorisms",
+      pattern: /\*\*(\d+) of the (\d+) are carried\*\* \(median coverage \*\*([0-9.]+)\*\*, minimum \*\*([0-9.]+)\*\*\)/,
+      expect: [BOOK4.meta.recovered, BOOK4.meta.total_in_book, ver(BOOK4).median, ver(BOOK4).min] },
+    { what: "the fourth edition's lost marks", pattern: /the (\d+) lost marks are named/,
+      expect: [BOOK4.meta.missing.length] },
+    { what: "the first edition's carried aphorisms",
+      pattern: /\*\*(\d+) of the (\d+) aphorisms\*\* \(median \*\*([0-9.]+)\*\*, minimum \*\*([0-9.]+)\*\*\)/,
+      expect: [BOOK1.meta.recovered, BOOK1.meta.total_in_book, ver(BOOK1).median, ver(BOOK1).min] },
+    { what: "the first edition's lost marks", pattern: /with the (\d+) lost marks named/,
+      expect: [BOOK1.meta.missing.length] },
+    { what: "the second edition's blocks and paragraphs",
+      pattern: /\*\*(\d+) blocks covering (\d+) of the (\d+) numbered paragraphs\*\*/,
+      expect: [BOOK2.meta.blocks, covered(BOOK2), BOOK2.meta.total_in_book] },
+    { what: "the third edition's blocks, paragraphs and corroboration",
+      pattern: /\*\*(\d+) blocks covering (\d+) of its (\d+) numbered paragraphs\*\* \(median corroboration \*\*([0-9.]+)\*\*, minimum \*\*([0-9.]+)\*\*\)/,
+      expect: [BOOK3.meta.blocks, covered(BOOK3), BOOK3.meta.total_in_book, ver(BOOK3).median, ver(BOOK3).min] },
+    { what: "the third edition's lost numbers", pattern: /with the (\d+) lost numbers named/,
+      expect: [BOOK3.meta.missing.length] },
+    { what: "the French blocks and paragraphs",
+      pattern: /\*\*(\d+) blocks covering (\d+) of (\d+) numbered paragraphs\*\*/,
+      expect: [BOOK2FR.meta.blocks, covered(BOOK2FR), BOOK2FR.meta.total_in_book] },
+    { what: "how many sections the fifth and sixth word differently",
+      pattern: /(\d+) sections are worded differently and \u00a7292\u2013\u00a7294 exist only in the fifth/,
+      expect: [FIFTH_DIFF.differ] },
+    { what: "the assertion count README.md prints",
+      pattern: /node test-node\.js +# the suite: (\d+) assertions, no dependencies/,
+      expect: [badgeNumbers()[1]] }
+  ]);
+  assert.deepStrictEqual(FIFTH_DIFF.onlyFifth, [292, 293, 294],
+    "the README says \u00a7292\u2013\u00a7294 exist only in the fifth; the bundles say " + JSON.stringify(FIFTH_DIFF.onlyFifth));
+});
+
+t("the figures data/README.md quotes about the books are the bundles' own", () => {
+  checkDoc("data/README.md", [
+    { what: "the sixth edition's median and minimum",
+      pattern: /scores \*\*median ([0-9.]+),\s+minimum ([0-9.]+)\*\* across all (\d+) sections/,
+      expect: [ver(BOOK).median, ver(BOOK).min, BOOK.meta.total_in_book] },
+    { what: "the fifth edition's median and minimum",
+      pattern: /coverage per section: median \*\*([0-9.]+)\*\*, minimum \*\*([0-9.]+)\*\*/,
+      expect: [ver(BOOK5).median, ver(BOOK5).min] },
+    { what: "the first edition's table",
+      pattern: /### The first edition[\s\S]{0,400}?Carried \| \*\*(\d+) of (\d+)\*\* aphorisms[\s\S]{0,160}?median \*\*([0-9.]+)\*\*, minimum \*\*([0-9.]+)\*\*/,
+      expect: [BOOK1.meta.recovered, BOOK1.meta.total_in_book, ver(BOOK1).median, ver(BOOK1).min] },
+    { what: "the fourth edition's table",
+      pattern: /### The fourth edition[\s\S]{0,400}?Carried \| \*\*(\d+) of (\d+)\*\* aphorisms[\s\S]{0,160}?median \*\*([0-9.]+)\*\*, minimum \*\*([0-9.]+)\*\*/,
+      expect: [BOOK4.meta.recovered, BOOK4.meta.total_in_book, ver(BOOK4).median, ver(BOOK4).min] },
+    { what: "the numbers the second, third and French books run to",
+      pattern: /Numbered to \| \u00a7(\d+) \| \u00a7(\d+) \| \u00a7(\d+)/,
+      expect: [BOOK2.meta.total_in_book, BOOK3.meta.total_in_book, BOOK2FR.meta.total_in_book] },
+    { what: "the blocks carried by the second, third and French books",
+      pattern: /Blocks carried \| (\d+) \| (\d+) \| (\d+)/,
+      expect: [BOOK2.meta.blocks, BOOK3.meta.blocks, BOOK2FR.meta.blocks] },
+    { what: "the paragraphs covered by the second, third and French books",
+      pattern: /Numbered paragraphs covered \| (\d+) of (\d+) \| (\d+) of (\d+) \| (\d+) of (\d+)/,
+      expect: [covered(BOOK2), BOOK2.meta.total_in_book, covered(BOOK3), BOOK3.meta.total_in_book,
+               covered(BOOK2FR), BOOK2FR.meta.total_in_book] },
+    { what: "the paragraphs the 1819 list brings under a block",
+      pattern: /brings (\d+) of the (\d+) numbered paragraphs under a block\. The (\d+) that remain/,
+      expect: [covered(BOOK2), BOOK2.meta.total_in_book, BOOK2.meta.missing.length] },
+    { what: "the third edition's blocks in the rebuilding note",
+      pattern: /so (\d+) blocks covering (\d+) of (\d+) paragraphs were/,
+      expect: [BOOK3.meta.blocks, covered(BOOK3), BOOK3.meta.total_in_book] },
+    { what: "the min-0 note's checked and carried counts",
+      pattern: /`sections_checked` reads (\d+) where `blocks`\s+reads (\d+)/,
+      expect: [ver(BOOK2).sections_checked, BOOK2.meta.blocks] },
+    { what: "the min-0 note's refused entry",
+      pattern: /`\{"n": (\d+), "corroboration": ([0-9.]+)\}`/,
+      expect: [(ver(BOOK2).refused[0] || {}).n, (ver(BOOK2).refused[0] || {}).corroboration] },
+    { what: "the min-0 note's carried median and minimum",
+      pattern: /their median is \*\*([0-9.]+)\*\* and their minimum \*\*([0-9.]+)\*\*/,
+      expect: [median(BOOK2.sections.map(s => s.corroboration)),
+               Math.min.apply(null, BOOK2.sections.map(s => s.corroboration))] },
+    { what: "the min-0 note's count of named gaps", pattern: /one of the (\d+) named gaps/,
+      expect: [BOOK2.meta.missing.length] },
+    { what: "the assertion count data/README.md prints",
+      pattern: /node test-node\.js +# the suite: (\d+) assertions/,
+      expect: [badgeNumbers()[1]] }
+  ]);
+});
+
+function median(nums) {
+  const s = nums.slice().sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)];
+}
+
+// the badge is drawn from the suite's own run, so the prose and the badge must agree
+function badgeNumbers() {
+  const svg = fs.readFileSync(path.join(docs, "badges", "tests.svg"), "utf8");
+  const m = /aria-label="tests: (\d+)\/(\d+)"/.exec(svg);
+  assert.ok(m, "docs/badges/tests.svg does not carry its figures \u2014 run python3 scripts/badges.py");
+  return [Number(m[1]), Number(m[2])];
+}
+
+/* ---------- the fingerprints: a rebuild that changes carried text must be recorded ----------
+ * The OCR is not committed, so no CI job can rebuild the books and compare. This can
+ * compare what is committed: every carried block is frozen in data/fingerprints.json, and
+ * a rebuild that rewords, renumbers or re-sources a block fails here until the change is
+ * recorded with `node tools/fingerprint.js record --note "why"` and committed with it. */
+const FP = require("./tools/fingerprint.js");
+const RECORDED = FP.load();
+
+for (const b of FP.BUNDLES) {
+  t("the " + b.label + " bundle still fingerprints as recorded", () => {
+    const want = RECORDED.bundles && RECORDED.bundles[b.rel];
+    assert.ok(want, b.rel + " has no recorded fingerprint \u2014 node tools/fingerprint.js record");
+    const have = FP.fingerprint(FP.read(b.rel));
+    assert.strictEqual(have.sections, want.sections,
+      b.rel + " now carries " + have.sections + " blocks, the record says " + want.sections);
+    const changed = Object.keys(want.blocks).filter(n => want.blocks[n] !== have.blocks[n]);
+    const added = Object.keys(have.blocks).filter(n => !(n in want.blocks));
+    const gone = Object.keys(want.blocks).filter(n => !(n in have.blocks));
+    const named = changed.concat(added, gone).sort((x, y) => x - y).slice(0, 6).map(n => "\u00a7" + n);
+    assert.strictEqual(changed.length + added.length + gone.length, 0,
+      b.rel + ": carried text changed since data/fingerprints.json was recorded (" + named.join(", ") +
+      (changed.length + added.length + gone.length > 6 ? ", \u2026" : "") +
+      "). If the change is intended, record it: node tools/fingerprint.js record --note \"why\"");
+    assert.strictEqual(have.digest, want.digest, b.rel + ": the bundle's block order or content changed");
+  });
+}
+
+t("the fingerprints cover every bundle the app loads, and say what they freeze", () => {
+  assert.strictEqual(RECORDED.format, FP.FORMAT, "data/fingerprints.json is from another format");
+  const recorded = Object.keys(RECORDED.bundles || {}).sort();
+  const expected = FP.BUNDLES.map(b => b.rel).sort();
+  assert.deepStrictEqual(recorded, expected, "every bundled book must be fingerprinted, and none other");
+  assert.ok(/machine flag/.test(RECORDED.covers || ""), "the file must say what it covers");
+  assert.strictEqual(RECORDED.algorithm, "sha256");
+});
+
+/* ---------- the concordance: the numbering across the books, as a map ---------- */
+const MAP_BOOKS = [
+  { key: "first", label: "E1", meta: BOOK1.meta, sections: BOOK1.sections },
+  { key: "fourth", label: "E4", meta: BOOK4.meta, sections: BOOK4.sections },
+  { key: "fifth", label: "E5", meta: BOOK5.meta, sections: BOOK5.sections },
+  { key: "sixth", label: "E6", meta: BOOK.meta, sections: BOOK.sections },
+  { key: "second", label: "DE2", meta: BOOK2.meta, sections: BOOK2.sections },
+  { key: "third", label: "DE3", meta: BOOK3.meta, sections: BOOK3.sections },
+  { key: "secondFr", label: "FR", meta: BOOK2FR.meta, sections: BOOK2FR.sections }
+];
+const MAP = R.concordance(MAP_BOOKS);
+
+t("the concordance runs 1 to the widest book's last paragraph, with no row dropped", () => {
+  const widest = Math.max.apply(null, MAP_BOOKS.map(b => b.meta.total_in_book));
+  assert.strictEqual(MAP.total, widest);
+  assert.strictEqual(MAP.rows.length, widest);
+  assert.strictEqual(MAP.rows[0].n, 1);
+  assert.strictEqual(MAP.rows[widest - 1].n, widest);
+  for (let i = 1; i < MAP.rows.length; i++) assert.ok(MAP.rows[i].n > MAP.rows[i - 1].n, "rows must ascend");
+});
+
+t("each column of the concordance carries exactly what its bundle says it carries", () => {
+  for (const b of MAP_BOOKS) {
+    assert.strictEqual(MAP.counts[b.key], covered(b),
+      b.key + ": the map carries " + MAP.counts[b.key] + " numbered paragraphs, the bundle says " + covered(b));
+    assert.strictEqual(MAP.counts[b.key], b.meta.total_in_book - b.meta.missing.length,
+      b.key + ": the map must cover every number the bundle does not list as missing");
+  }
+});
+
+t("a printed range fills every number the page prints with it, under a block that carries it", () => {
+  for (const b of MAP_BOOKS) {
+    // every block's own number points at that block, whatever a range before it said
+    const starts = new Set(b.sections.map(s => s.n));
+    const spans = {};
+    b.sections.forEach(s => {
+      const to = s.to == null ? s.n : s.to;
+      for (let n = s.n; n <= to; n++) (spans[n] = spans[n] || []).push(s.n);
+    });
+    for (const s of b.sections) assert.deepStrictEqual(MAP.rows[s.n - 1].books[b.key],
+      { start: s.n, label: s.to == null || s.to === s.n ? "\u00a7" + s.n : "\u00a7" + s.n + "\u2013" + s.to },
+      b.key + " \u00a7" + s.n + " must open its own block");
+    for (const key of Object.keys(spans)) {
+      const cell = MAP.rows[Number(key) - 1].books[b.key];
+      assert.ok(cell, b.key + " \u00a7" + key + " is printed in a block but the map leaves it empty");
+      assert.ok(spans[key].includes(cell.start),
+        b.key + " \u00a7" + key + " must open a block that prints it, got \u00a7" + cell.start);
+      if (starts.has(Number(key))) assert.strictEqual(cell.start, Number(key),
+        b.key + " \u00a7" + key + " is printed under its own mark and must open that block");
+    }
+  }
+  // the widest printed range, §90–105, is one English block in the 1819 list
+  assert.deepStrictEqual(MAP.rows[96].books.second, { start: 90, label: "\u00a790\u2013105" },
+    "\u00a797 is printed with \u00a790\u2013105 and must point there");
+  assert.strictEqual(MAP.rows[96].books.sixth.start, 97, "the sixth edition prints \u00a797 on its own");
+  // §124 is printed both inside §123–124 (the Google copy) and under its own mark (BN)
+  assert.deepStrictEqual(MAP.rows[123].books.third, { start: 124, label: "\u00a7124" },
+    "a number printed under its own mark opens that block, not the range that also prints it");
+  assert.deepStrictEqual(MAP.rows[122].books.third, { start: 123, label: "\u00a7123\u2013124" });
+});
+
+t("nothing is filled in from another edition: a number a book lacks is empty in its column", () => {
+  // the fifth carries §292–§294 and the sixth does not; the first stops at §271
+  assert.deepStrictEqual(MAP.rows[291].books.fifth, { start: 292, label: "\u00a7292" });
+  assert.strictEqual(MAP.rows[291].books.sixth, undefined, "the sixth has no \u00a7292");
+  assert.strictEqual(MAP.rows[293].books.sixth, undefined, "the sixth has no \u00a7294");
+  assert.strictEqual(MAP.rows[318].books.first, undefined, "the first edition numbers only to \u00a7271");
+  assert.ok(MAP.rows[317].books.second, "the 1819 list covers \u00a7318");
+  assert.strictEqual(MAP.rows[319].books.second, undefined, "and stops there");
+  // and no row invents a cell for a book that has ended
+  for (const row of MAP.rows) {
+    for (const b of MAP_BOOKS) {
+      if (row.n > b.meta.total_in_book) assert.strictEqual(row.books[b.key], undefined,
+        b.key + " \u00a7" + row.n + " is past the end of that book");
+    }
+  }
+});
+
+t("the machine translations need no column: each covers exactly its German blocks", () => {
+  for (const [mt, de] of [[BOOK2MT, BOOK2], [BOOK3MT, BOOK3]]) {
+    const a = {}, b = {};
+    mt.sections.forEach(s => { for (let n = s.n; n <= (s.to == null ? s.n : s.to); n++) a[n] = true; });
+    de.sections.forEach(s => { for (let n = s.n; n <= (s.to == null ? s.n : s.to); n++) b[n] = true; });
+    assert.deepStrictEqual(Object.keys(a).sort(), Object.keys(b).sort(),
+      "the machine bundle and its German must cover the same numbers");
+  }
+});
+
+t("the page draws the concordance from the engine, and gives the machine books no column", () => {
+  const html = fs.readFileSync(appPage, "utf8");
+  assert.ok(/R\.concordance\s*\(/.test(html), "the page must call R.concordance, not rebuild the ranges");
+  assert.ok(/for \(var n = s\.n; n <= to; n\+\+\)/.test(fs.readFileSync(path.join(docs, "reader.js"), "utf8")),
+    "the range expansion must live in the engine");
+  const mapKeys = [...html.matchAll(/\["(\w+)", "[A-Z0-9]+"\]/g)].map(m => m[1]);
+  assert.deepStrictEqual(mapKeys, ["first", "fourth", "fifth", "sixth", "second", "third", "secondFr"],
+    "seven columns: the four English books, the two German and the French");
+  assert.ok(!/secondMt|thirdMt/.test(html.slice(html.indexOf("var MAP_BOOKS"), html.indexOf("var MAP_BOOKS") + 400)),
+    "the machine books must not take a column of their own");
+});
+
 console.log("\n" + pass + "/" + (pass + fail) + " assertions passed");
 process.exit(fail ? 1 : 0);

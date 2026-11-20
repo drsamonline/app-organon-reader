@@ -71,7 +71,20 @@ SHA-256 of every OCR file used, and the edition evidence line, are recorded in
     python3 tools/parse-homeoint.py   # -> homeoint_sections.json (291, sixth edition only)
     python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 57 assertions
+    node test-node.js                 # the suite: 75 assertions
+    node tools/fingerprint.js check    # the carried text still matches data/fingerprints.json
+
+**The fingerprint gate.** The OCR is not committed, so nothing here can rebuild a book and
+compare it with the one on the shelf. `data/fingerprints.json` does the next best thing: it
+freezes every carried block — its number, the range end it prints, the source label, the
+corroboration figure, its text, its printed notes and whether it is machine text — and the
+suite refuses a bundle whose blocks no longer match. A rebuild that rewords, renumbers or
+re-sources a block therefore fails until the change is recorded on purpose:
+
+    node tools/fingerprint.js record --note "why the carried text changed"
+
+and committed with the change. The note is the record of why, so a re-recording is a
+deliberate act with a reason beside it, not a way to make a red suite green.
 
 ## The fifth edition, added 2026-11-03
 

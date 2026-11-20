@@ -103,6 +103,23 @@ def readme_block():
     return "\n".join(lines)
 
 
+def suite_counts():
+    """The suite's size, written into both documents from the same run as the badge.
+    A count typed by hand is the figure that goes stale; this one cannot."""
+    if not TOTAL_TESTS.isdigit():
+        print("!! the suite did not report a count — the documents are left alone")
+        return
+    for path in (README, "data/README.md"):
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding="utf-8").read()
+        new = re.sub(r"(node test-node\.js\s+# the suite: )\d+( assertions)",
+                     lambda m: m.group(1) + TOTAL_TESTS + m.group(2), text)
+        if new != text:
+            open(path, "w", encoding="utf-8").write(new)
+            print("wrote the assertion count into", path)
+
+
 if os.path.exists(README):
     text = open(README, encoding="utf-8").read()
     block = readme_block()
@@ -114,3 +131,5 @@ if os.path.exists(README):
         print("rewrote the badge block in", README)
     else:
         print("!! README has no badges:start/end markers — SVGs written, README untouched")
+
+suite_counts()

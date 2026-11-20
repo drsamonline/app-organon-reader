@@ -3,10 +3,10 @@
   "locked": false,
   "files": {
     "README.md": {
-      "sha": "31056518baafc2888c700bd61f23573e3d5dce0a",
+      "sha": "4e541a8cc4cf43826255212e8116f570aa1cf067",
       "producer": "buff@39b7664",
       "class": "agent",
-      "at": "2026-11-20T12:57:46Z"
+      "at": "2026-11-20T16:06:10Z"
     },
     "docs/index.html": {
       "sha": "2e268c1371f2c3147843c4c445cd9bb9165602a0",
@@ -21,47 +21,65 @@
       "at": "2026-11-20T04:07:54Z"
     },
     "docs/reader.js": {
-      "sha": "436353d5fa92c6762377af8f7bf533a8acc81d56",
+      "sha": "202b620c6175c29172852f0339ab6623c758fcd8",
       "producer": "buff@39b7664",
       "class": "generated",
-      "at": "2026-11-20T12:57:46Z"
+      "at": "2026-11-20T16:06:10Z"
     },
     "docs/play/index.html": {
-      "sha": "98b6741ce639dc7a7d7c395cad073b04b6efa5a6",
+      "sha": "bf459fd2f516bf58cca9fb1294544e6f28e715ce",
       "producer": "buff@39b7664",
       "class": "generated",
-      "at": "2026-11-20T12:57:46Z"
+      "at": "2026-11-20T16:06:10Z"
     },
     "test-node.js": {
-      "sha": "c62bdebd67c166d64ed2f19ca254d99c68b127c2",
+      "sha": "3e70d66dcb10dcc6c15758e4747a8fe74d79b793",
       "producer": "buff@39b7664",
       "class": "generated",
-      "at": "2026-11-20T12:57:46Z"
+      "at": "2026-11-20T16:06:10Z"
     },
     "data/README.md": {
-      "sha": "01a01fa4116e65084d66090fbf35bc95e56a21ff",
+      "sha": "92989f1b9e4a06ff6d0066c1bbbd4b17714a08b2",
       "producer": "buff@39b7664",
       "class": "generated",
-      "at": "2026-11-20T15:34:55Z"
+      "at": "2026-11-20T16:06:10Z"
     },
     "CHANGELOG.md": {
-      "sha": "39e871903ffc1364054c1531776abe062f45b618",
+      "sha": "f88e2687f7b42eade2596ddee4f5d29e3a98cc22",
       "producer": "buff@39b7664",
       "class": "generated",
-      "at": "2026-11-20T13:52:35Z"
+      "at": "2026-11-20T16:06:10Z"
     },
     "VERSION": {
-      "sha": "d8c5e721a77e3f86a793502efd31399521876fa2",
+      "sha": "15d45d4b47ef42f7160a70b97067709e8669f513",
       "producer": "buff@39b7664",
       "class": "generated",
-      "at": "2026-11-20T12:57:46Z"
+      "at": "2026-11-20T16:06:10Z"
     },
     "docs/badges/tests.svg": {
-      "sha": "18fe6aef391077232961e9fa241b838695052f70",
+      "sha": "81857196c7cebe91e06d353ae025811ae739ae9f",
       "producer": "buff@39b7664",
       "class": "generated",
-      "at": "2026-11-20T12:57:46Z"
+      "at": "2026-11-20T16:06:10Z"
+    },
+    "data/fingerprints.json": {
+      "sha": "b9d8e67aea45e7b49e5b8305e46af3e771816a3b",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T16:06:10Z"
+    },
+    "tools/fingerprint.js": {
+      "sha": "781fc33aa16b2dd72a6acaa2abf1d1b030b79a54",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T16:06:10Z"
+    },
+    "scripts/badges.py": {
+      "sha": "f43d0731d297eb40e031e7f22b2e73df57e7fabb",
+      "producer": "buff@39b7664",
+      "class": "generated",
+      "at": "2026-11-20T16:06:10Z"
     }
   },
-  "updated": "2026-11-20T15:34:55Z"
+  "updated": "2026-11-20T16:06:10Z"
 }

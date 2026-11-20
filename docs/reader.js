@@ -149,6 +149,56 @@
     return "text from the " + row.from + " " + kind + tail;
   }
 
+  /* ---------- the map of numbered paragraphs across the books ---------- */
+  /**
+   * concordance(books) -> which of the numbered paragraphs each book carries.
+   * books: [{key, label, meta, sections}]. A block printed as a range (§90–105)
+   * covers every number the page prints with it, so the map counts paragraphs, not
+   * blocks: it says who carries §97 without pretending to have sixteen texts. A
+   * column is present only where the bundle is; nothing is filled in from another
+   * edition, so a number absent here is absent from that book as carried. Where a
+   * number is printed both alone and inside a range, the cell opens the block that
+   * prints it under its own mark, and the range is reached from its first number.
+   */
+  function concordance(books) {
+    var total = 0, carried = {}, counts = {};
+    (books || []).forEach(function (b) {
+      var meta = b.meta || {};
+      total = Math.max(total, meta.total_in_book || 0);
+      var map = {};
+      function label(s) {
+        var to = s.to == null ? s.n : s.to;
+        return to === s.n ? "\u00a7" + s.n : "\u00a7" + s.n + "\u2013" + to;
+      }
+      // a range fills the numbers it prints, unless another block prints that number
+      // under a mark of its own: §124 is inside §123–124 and is also printed as §124,
+      // and the reader opens the block the number actually labels (second pass wins)
+      (b.sections || []).forEach(function (s) {
+        var to = s.to == null ? s.n : s.to;
+        for (var n = s.n; n <= to; n++) if (!map[n]) map[n] = { start: s.n, label: label(s) };
+      });
+      (b.sections || []).forEach(function (s) {
+        map[s.n] = { start: s.n, label: label(s) };
+      });
+      carried[b.key] = map;
+      counts[b.key] = Object.keys(map).length;
+    });
+    var rows = [];
+    for (var n = 1; n <= total; n++) {
+      var row = { n: n, books: {} };
+      (books || []).forEach(function (b) {
+        if (carried[b.key][n]) row.books[b.key] = carried[b.key][n];
+      });
+      rows.push(row);
+    }
+    return {
+      total: total,
+      counts: counts,
+      books: (books || []).map(function (b) { return { key: b.key, label: b.label }; }),
+      rows: rows
+    };
+  }
+
   /* ---------- state: bookmarks and notes, on the device ---------- */
   function Store(storage, key) {
     this.storage = storage;
@@ -237,6 +287,7 @@
     step: step,
     coverage: coverage,
     provenance: provenance,
+    concordance: concordance,
     Store: Store,
     empty: empty,
     normalise: normalise,
