@@ -259,10 +259,11 @@ whose numbers both copies destroyed (`§8–11` reads `<q. 10. 11.`, `§252–25
 `2Ö2 — - s5j.`), and one entry (`§259–274`) that the reading copy lost altogether.
 
 **Why the bundle records a minimum of 0.** `meta.verification.min` is the lowest figure among the
-entries that were *checked*, not among the blocks that were *kept*. Entry `§251` scored 0.0 — neither
-copy reads its rubric — and was refused at the 0.60 floor, so it is dropped from the bundle and
-shown in the section list as one of the 38 named gaps, with `meta.verification.refused` recording
-`{"n": 251, "corroboration": 0.0}`. That is why `sections_checked` reads 99 where `blocks` reads 98.
+entries that were *checked*, not among the blocks that were *kept*. Entry `§251` scored 0.0 — its
+rubric text matched neither scan — and was refused at the 0.60 floor, so it is dropped from the
+bundle and shown in the section list as one of the 38 named gaps, with `meta.verification.refused`
+recording `{"n": 251, "corroboration": 0.0}`. That is why `sections_checked` reads 99 where `blocks`
+reads 98.
 The 98 carried blocks are all above the floor: their median is **1.000** and their minimum **0.996**,
 not 0. A zero in this bundle means *checked and refused*, never *carried and doubtful*.
 
