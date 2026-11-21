@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.6.10 — 2026-11-21
+
+**The 1824 bundle stops carrying §124 twice.**
+
+- **The section belongs to the block that prints its own mark.** The Google copy of the 1824
+  printing reads its §123 mark as a range, `§123–124`, and its text is §123's one sentence —
+  *Jede Arznei hat von der andern verschiedene Wirkungen. Anm. Es kann keine Surrogate geben.*
+  The BN copy of the same printing prints §124 under its own mark: *So gewiß jede Pflanzenart
+  in ihrer äußern Gestalt…*. Both blocks were kept, so the bundle carried §124 twice, with
+  different text. §124 is now the BN block alone and the range stops at §123.
+- **The decision is not a guess about which OCR read the page better.** It is Brunnow's French
+  of the same year that settles it: his §124 opens *De même que chaque espèce de plantes
+  diffère de toute autre espèce…* — the German block under BN's §124 mark — and his §123 is
+  §123's sentence, *De chaque médicament résulte des effets particuliers…*.
+- **`tools/scanlib.py` now lets no block claim a number another block already carries.** A
+  block printed under its own mark takes that number first, whichever copy of the printing
+  was read first, and a range is cut back to the numbers still unowned; the cut is written
+  into the bundle as
+  `meta.range_conflicts` (`{"n": 123, "printed_to": 124, "kept_to": 123, "owned_elsewhere":
+  [124], "owner": {"124": 124}}`), so a trimmed block is a record rather than a silent edit.
+  A number cut away that no other block carries becomes a named gap like any other; nothing
+  is renumbered and no text is moved between sections.
+- **The machine bundle mirrors the corrected range.** `docs/organon3-en-mt-data.js` is built
+  block for block from the German, so §123's machine rendering stops at §123 as well, and it
+  carries the same `range_conflicts` record.
+- **The rule is exercised, not just described.** With the OCR uncommitted the real bundle
+  cannot be rebuilt in a checkout, so `tools/test-scanlib-range.py` builds a synthetic book
+  from two invented scans — one prints §5 on its own mark, the other reads its §4–§5 block as
+  a range — and `scanlib.build` must keep §5 with its own mark, cut the range to §4, record
+  the cut, and leave a range nobody contests whole. The suite runs it in both source orders,
+  because the copy read first is not an argument about the page.
+- **The suite now refuses any bundle that carries one number in two blocks**, and asserts the
+  recorded cut in both 1824 bundles. **77 assertions** (was 75), and the `tests` badge is
+  regenerated from the run.
+- The OCR is not committed, so the two bundles are corrected in place; the rule is in
+  `scanlib.build`, which is what a rebuild runs, so `tools/build-organon3.py` reproduces
+  these blocks rather than the duplicated one.
+
 ## 1.6.9 — 2026-11-20
 
 **Three guards on the books themselves: the figures, the carried text, and the numbering.**

@@ -540,6 +540,39 @@ def write_bundle(out_js, out_json, meta, sections, global_name, comment, spans=T
     return len(js)
 
 
+def resolve_ranges(merged, printed_to):
+    """Give each printed number to one block, and record every range that was cut.
+
+    A block may not claim a number another block already carries. The 1824 Google copy
+    reads its §123 mark as the range `§123–124` over §123's one sentence, while the BN copy
+    of the same printing prints §124 on its own mark; keeping both carried §124 twice with
+    different text. The range is cut back to the numbers still unowned and the cut is
+    recorded, never absorbed silently. A number cut away that nobody else carries becomes a
+    named gap like any other.
+
+    A block printed under its own mark claims that number first, whichever copy was read
+    first: source order is how the scans were given, not an argument about the page. Ranges
+    then fill what is left, in the order their numbers were printed.
+    """
+    owned, to_of, conflicts = {}, {}, []
+    order = ([n for n in merged if printed_to[n] <= n]
+             + sorted(n for n in merged if printed_to[n] > n))
+    for n in order:
+        printed = max(n, printed_to[n])
+        kept_to = n
+        while kept_to + 1 <= printed and (kept_to + 1) not in owned:
+            kept_to += 1
+        lost = [k for k in range(kept_to + 1, printed + 1) if k in owned]
+        if lost:
+            conflicts.append({"n": n, "printed_to": printed, "kept_to": kept_to,
+                              "owned_elsewhere": lost,
+                              "owner": {str(k): owned[k] for k in lost}})
+        to_of[n] = kept_to
+        for k in range(n, kept_to + 1):
+            owned[k] = n
+    return to_of, conflicts
+
+
 def build(out_js, out_json, global_name, max_n, sources, edition, title, translator,
           language, comment, confidence_note, floor=0.60, source_url=None, notes=(),
           generator="tools/", extras=(), text_fix=None):
@@ -579,7 +612,7 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
         if secs:
             print(f"  scan {src['label']:22s} {len(secs):3d} blocks readable")
 
-    merged, origin, to_of, verify = {}, {}, {}, {}
+    merged, origin, printed_to = {}, {}, {}
     for closed_only in (True, False):
         for lab, secs in per_scan.items():
             for n, (text, to, closed) in secs.items():
@@ -587,7 +620,8 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
                     continue
                 merged[n] = text
                 origin[n] = lab
-                to_of[n] = to
+                printed_to[n] = to
+    to_of, conflicts = resolve_ranges(merged, printed_to)
 
     for n, (as_read, as_printed) in (text_fix or {}).items():
         if n not in merged:
@@ -596,15 +630,17 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
             raise SystemExit(f"text_fix looks for {as_read!r} in §{n}, which does not read so")
         merged[n] = merged[n].replace(as_read, as_printed, 1)
 
-    _finish(merged, origin, to_of, {}, corpus, max_n, out_js, out_json, global_name,
+    return _finish(merged, origin, to_of, {}, corpus, max_n, out_js, out_json, global_name,
             {"title": title, "edition": edition, "translator": translator,
              "language": language,
              "source": source_url or "https://archive.org/details/" + sources[0]["ident"]},
-            comment, confidence_note, floor, notes, generator, extras, scan_meta_list)
+            comment, confidence_note, floor, notes, generator, extras, scan_meta_list,
+            range_conflicts=conflicts)
 
 
 def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, global_name,
-            head, comment, confidence_note, floor, notes, generator, extras, scans):
+            head, comment, confidence_note, floor, notes, generator, extras, scans,
+            range_conflicts=()):
     """Verify every block against the scans, name the gaps, write the bundle."""
     verify, refused = {}, []
     for n in list(merged):
@@ -642,6 +678,8 @@ def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, globa
         "scans": scans,
         "notes": list(notes),
     })
+    if range_conflicts:
+        meta["range_conflicts"] = list(range_conflicts)
     for key, value in extras:
         meta[key] = value
     sections = []

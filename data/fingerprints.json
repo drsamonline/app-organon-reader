@@ -2,7 +2,7 @@
   "format": 1,
   "algorithm": "sha256",
   "covers": "every carried block's number, printed range end, source label, corroboration, text, printed notes and machine flag, in bundle order",
-  "note": "first recording, at 1.6.9, before the gate was in the suite",
+  "note": "1824 §124: the Google copy's §123-124 range cut back to §123, so §124 is the BN block alone; the machine mirror follows",
   "bundles": {
     "docs/organon-data.js": {
       "sections": 291,
@@ -1216,7 +1216,7 @@
     },
     "docs/organon3-data.js": {
       "sections": 297,
-      "digest": "0c2b2c243cc5ceac818f8789ba62489f57b03908570edc4f0b516eaefdc81c7b",
+      "digest": "289c9d0d55469c3edeaa0a1d420daba73f618bbd4cfa259afef432aec2c59890",
       "blocks": {
         "1": "5592d19d3a5889b9",
         "3": "5f2f24e7ad9e7ac7",
@@ -1326,7 +1326,7 @@
         "120": "2e93477990ca6871",
         "121": "7546cd224eee0868",
         "122": "34cb33166c9c926c",
-        "123": "9683d987e1b2a408",
+        "123": "b323ef4c67d06c66",
         "124": "08ecb2e8f05dbe47",
         "125": "fcfdc8ec9f668b4c",
         "126": "94b1741fa7256a26",
@@ -1943,7 +1943,7 @@
     },
     "docs/organon3-en-mt-data.js": {
       "sections": 297,
-      "digest": "192932d267811ec485d375536623591ecbd24772efed1cf8276691322dcaecb8",
+      "digest": "c22f6d12eff7395b6ca18fc43cae31b7e5a0c812d57f947737904cc5d3fd2322",
       "blocks": {
         "1": "c3158effdc4bb141",
         "3": "72d1506d84df3748",
@@ -2053,7 +2053,7 @@
         "120": "82599ef9da6c61f4",
         "121": "d07c188231340988",
         "122": "391b2221f4d5c398",
-        "123": "9db58360f159501d",
+        "123": "967e0989473133c6",
         "124": "3d7de6100a3d58be",
         "125": "12107628ba193106",
         "126": "62b589383e7b46cb",

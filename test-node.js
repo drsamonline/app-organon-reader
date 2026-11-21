@@ -10,6 +10,7 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { execFileSync } = require("child_process");
 
 const R = require("./docs/reader.js");
 const BOOK = require("./docs/organon-data.js");
@@ -905,10 +906,60 @@ t("a printed range fills every number the page prints with it, under a block tha
   assert.deepStrictEqual(MAP.rows[96].books.second, { start: 90, label: "\u00a790\u2013105" },
     "\u00a797 is printed with \u00a790\u2013105 and must point there");
   assert.strictEqual(MAP.rows[96].books.sixth.start, 97, "the sixth edition prints \u00a797 on its own");
-  // §124 is printed both inside §123–124 (the Google copy) and under its own mark (BN)
+  // §124 was claimed by the Google copy's §123–124 range as well as by BN's own §124 mark
   assert.deepStrictEqual(MAP.rows[123].books.third, { start: 124, label: "\u00a7124" },
-    "a number printed under its own mark opens that block, not the range that also prints it");
-  assert.deepStrictEqual(MAP.rows[122].books.third, { start: 123, label: "\u00a7123\u2013124" });
+    "§124 is printed under its own mark and only that block carries it");
+  assert.deepStrictEqual(MAP.rows[122].books.third, { start: 123, label: "\u00a7123" },
+    "the range that also printed §124 stops at §123");
+});
+
+t("no book carries a number in two blocks: a range stops where another block owns the number", () => {
+  for (const b of MAP_BOOKS) {
+    const owner = {};
+    for (const s of b.sections) {
+      const to = s.to == null ? s.n : s.to;
+      for (let n = s.n; n <= to; n++) {
+        assert.ok(owner[n] === undefined,
+          b.key + " carries \u00a7" + n + " in \u00a7" + owner[n] + " and again in \u00a7" + s.n);
+        owner[n] = s.n;
+      }
+    }
+  }
+  // the 1824 German cut the Google copy's §123–124 back to §123 and records the cut; the
+  // machine mirror is built from those same blocks and must match them number for number
+  for (const b of [BOOK3, BOOK3MT]) {
+    const a = b.sections.find(s => s.n === 123);
+    assert.strictEqual(a.to, 123, "§123 must stop before the block that prints §124");
+    assert.deepStrictEqual(b.meta.range_conflicts,
+      [{ n: 123, printed_to: 124, kept_to: 123, owned_elsewhere: [124], owner: { 124: 124 } }],
+      "a range cut for another block's number must be recorded in the bundle");
+  }
+});
+
+t("scanlib cuts a range back for the block that prints the number, whichever scan is read first", () => {
+  // the 1824 OCR is not committed, so the rule is executed on a synthetic book: one copy
+  // prints §5 under its own mark, the other reads its §4–§5 block as a range
+  const py = process.env.PYTHON || "python3";
+  let out;
+  try {
+    out = execFileSync(py, [path.join(__dirname, "tools/test-scanlib-range.py")],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (e) {
+    throw new Error("scanlib.build could not be exercised with " + py + ": " +
+      String((e.stdout || "") + (e.stderr || "")).trim());
+  }
+  const runs = JSON.parse(out.trim().split("\n").pop()).scanlib_range;
+  assert.strictEqual(runs.length, 2, "the rule must be exercised in both source orders");
+  for (const run of runs) {
+    const where = run.order.join(" then ");
+    assert.strictEqual(run.range_4, 4, where + ": the range §4–5 must stop at §4, got " + run.range_4);
+    assert.strictEqual(run.section_5, "SYN-OWN", where + ": §5 must stay with its own mark, got " + run.section_5);
+    assert.strictEqual(run.range_7, 9, where + ": a range no other block competes for must stay whole, got " + run.range_7);
+    assert.deepStrictEqual(run.range_conflicts,
+      [{ n: 4, printed_to: 5, kept_to: 4, owned_elsewhere: [5], owner: { 5: 5 } }],
+      where + ": the cut must be recorded, not absorbed");
+    assert.strictEqual(run.blocks, 7, where + ": the cut number must not open a block of its own");
+  }
 });
 
 t("nothing is filled in from another edition: a number a book lacks is empty in its column", () => {

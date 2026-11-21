@@ -71,7 +71,7 @@ SHA-256 of every OCR file used, and the edition evidence line, are recorded in
     python3 tools/parse-homeoint.py   # -> homeoint_sections.json (291, sixth edition only)
     python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 75 assertions
+    node test-node.js                 # the suite: 77 assertions
     node tools/fingerprint.js check    # the carried text still matches data/fingerprints.json
 
 **The fingerprint gate.** The OCR is not committed, so nothing here can rebuild a book and
@@ -316,6 +316,19 @@ repeated.
 and Google's `organonderheilk01hahngoog`), so 297 blocks covering 307 of 320 paragraphs were
 recovered; the 13 lost numbers are named. The two copies are different scans of the same
 printing and are parsed independently.
+
+**One range had been claiming a number another block prints.** The Google copy reads its §123
+mark as the range `§123–124`, and the text under it is §123's one sentence (*Jede Arznei hat
+von der andern verschiedene Wirkungen. Anm. Es kann keine Surrogate geben.*); the BN copy of
+the same printing prints §124 on its own mark (*So gewiß jede Pflanzenart in ihrer äußern
+Gestalt…*). Keeping both carried §124 twice, with different text. `tools/scanlib.py` now lets
+no block claim a number another block already carries: the range is cut back to the numbers
+still unowned and the cut is recorded in `meta.range_conflicts` — here `{"n": 123,
+"printed_to": 124, "kept_to": 123, "owned_elsewhere": [124], "owner": {"124": 124}}` — so a
+trimmed range is a record, not a silent edit. Which block owns §124 is settled by the text,
+not by preference: Brunnow's French of the same year opens its §124 *De même que chaque espèce
+de plantes diffère…* and its §123 with §123's sentence. The machine bundle is built block for
+block from the German and carries the same range and the same record.
 
 **What is not carried.** Hahnemann's Introduction, prefaces and footnotes are not part of the
 numbered text; none of these three bundles carries them, and the reader says so. The 1819
