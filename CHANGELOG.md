@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.6.11 — 2026-11-21
+
+**The three scan builds are byte-for-byte reproducible.**
+
+- **The rebuild was one key order away from matching.** `tools/scanlib.py`'s `_finish()` wrote
+  `meta.range_conflicts` after `scans` and `notes`, while the committed 1824 bundle carries it
+  between the `verification` figures it explains and the `scans` list. With the OCR fetched
+  and the three builds run, the German came out the same 349892 bytes with the record in a
+  different place — content-identical, but not byte-identical. The cut is now inserted before
+  `scans`; a bundle with no cut keeps the layout it had, so neither other bundle moved.
+- **This is measured, not asserted.** The six OCR files were fetched into `ORGANON_SRC` and
+  the three builds run in the documented order, French first: `docs/organon2-fr-data.js`
+  (448177 bytes, sha256 `ca19a6e2…`), `docs/organon2-data.js` (40862 bytes, `258ba084…`) and
+  `docs/organon3-data.js` (349892 bytes, `36d2f070…`) each come back byte for byte. No bundle
+  byte changed here, so the fingerprints stand 9/9 and every quoted figure is the same; the
+  reproduction command and hashes are in `data/README.md` under **Rebuilding**.
+- **The suite is unchanged at 77 assertions**, and runs green with the new order: the two
+  bundles still carry the same §123 cut, and `tools/test-scanlib-range.py` still builds the
+  synthetic book in both source orders.
+
 ## 1.6.10 — 2026-11-21
 
 **The 1824 bundle stops carrying §124 twice.**

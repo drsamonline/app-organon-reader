@@ -348,6 +348,15 @@ The French build runs first: `tools/build-organon2.py` corroborates the restored
 against the paragraph numbers in `docs/organon2-fr-data.js`, and if that bundle is not there
 it restores no end from a neighbouring entry — the uncorroborated ends stay named gaps.
 
+With those six files in place, the three builds reproduce the committed bundles byte for byte:
+`docs/organon2-fr-data.js` 448177 bytes, sha256 `ca19a6e2d8b8daf365eef66a0d5623de9d4527365d780fc2bb34d0bd4453f711`;
+`docs/organon2-data.js` 40862 bytes, sha256 `258ba0840f167ac51f0f1f9c35ea9843524d91a043e8474df23e43f59002d80e`;
+`docs/organon3-data.js` 349892 bytes, sha256 `36d2f0704ac17cefb9d246a1213d08470305133d09ad4efdddd7f51f6f54c7ac`.
+A rebuild that disagrees therefore means the OCR files or the code have moved, not that the
+page was read differently; nothing is overwritten on that evidence alone. The order of the
+keys inside `meta` is part of the record: the 1824 bundle's `range_conflicts` sits between
+`verification` and `scans`, and `tools/scanlib.py` writes it there.
+
 ## The machine translations — generated text, quarantined
 
 `tools/translate-mt.py` sends each German block to Google's `translate_a/single` endpoint
