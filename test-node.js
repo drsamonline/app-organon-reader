@@ -650,6 +650,67 @@ for (const [label, book] of [
     checkProvenance(label, book));
 }
 
+/* ---------- every carried block says which printed page it was read from ----------
+ * The text of these five books was cut from scans, and the leaves of a scan print their
+ * own page numbers. The build records the page and the leaf of the scan the text came
+ * from; a leaf whose number could not be read records no page and is named in
+ * meta.pages.blocks_without_a_page instead of being given a plausible number. This is
+ * the check that the two agree, that no page exceeds the leaves the scan has, and that
+ * a block's page never moves backwards inside one scan. */
+function checkPages(label, book) {
+  const meta = book.meta;
+  assert.ok(meta.pages && meta.pages.by_scan, label + " records no page provenance");
+  assert.ok(Array.isArray(meta.pages.blocks_without_a_page),
+    label + " must name the blocks whose page could not be read");
+  const noPage = new Set(meta.pages.blocks_without_a_page);
+  let prev = {}, withPage = 0;
+  for (const s of book.sections) {
+    const scan = meta.pages.by_scan[s.from];
+    assert.ok(scan, label + " §" + s.n + " comes from " + s.from + ", which has no leaf map");
+    assert.ok(s.leaf != null && s.leaf >= 1 && s.leaf <= scan.leaves,
+      label + " §" + s.n + " records leaf " + s.leaf + " of a scan with " + scan.leaves + " leaves");
+    if (s.page == null) {
+      assert.ok(noPage.has(s.n),
+        label + " §" + s.n + " has no page and is not named among the blocks without one");
+      assert.ok(!/printed page/.test(R.provenance(s, meta)),
+        label + " §" + s.n + " prints a page it does not have: " + R.provenance(s, meta));
+      continue;
+    }
+    withPage++;
+    assert.ok(s.page >= 1 && s.page <= scan.leaves,
+      label + " §" + s.n + " claims page " + s.page + " of a scan with " + scan.leaves + " leaves");
+    if (s.page_to != null) {
+      assert.ok(s.page_to >= s.page, label + " §" + s.n + " ends its page range before it begins");
+    }
+    if (prev[s.from] != null) {
+      assert.ok(s.page >= prev[s.from],
+        label + " §" + s.n + " was read from page " + s.page + " after §" + prev.n +
+        " on page " + prev[s.from] + " of the same scan");
+    }
+    prev = Object.assign({}, prev, { [s.from]: s.page, n: s.n });
+    assert.ok(R.provenance(s, meta).includes("printed page " + s.page + (s.page_to == null ? "" : "–" + s.page_to)),
+      label + " §" + s.n + " must print the page it was read from: " + R.provenance(s, meta));
+  }
+  assert.ok(withPage > 0, label + " records no page on any block");
+}
+
+for (const [label, book] of [
+  ["first", BOOK1], ["second", BOOK2], ["second (French)", BOOK2FR],
+  ["third", BOOK3], ["fourth", BOOK4]
+]) {
+  t("every section of the " + label + " bundle says which printed page it was read from", () =>
+    checkPages(label, book));
+}
+
+t("a transcription records no page, because its text was not cut from a leaf", () => {
+  for (const [label, book] of [["sixth", BOOK], ["fifth", BOOK5]]) {
+    assert.ok(!book.meta.pages, label + " must not claim page provenance it does not have");
+    for (const s of book.sections) {
+      assert.strictEqual(s.page, undefined, label + " §" + s.n + " must record no printed page");
+    }
+  }
+});
+
 t("the provenance sentence is one pure function in the engine, and the page only wraps it", () => {
   const html = fs.readFileSync(appPage, "utf8");
   const engine = fs.readFileSync(path.join(docs, "reader.js"), "utf8");

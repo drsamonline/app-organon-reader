@@ -24,6 +24,8 @@ only while it moves forward. Everything else is a named gap.
 """
 import hashlib, json, os, re, statistics
 
+import pages
+
 # OCR's own letter-for-digit confusions, applied inside a number only
 DIGITS = {"l": "1", "I": "1", "|": "1", "i": "1", "!": "1", "O": "0", "o": "0",
           "Q": "0", "S": "5", "s": "5", "B": "8", "g": "9", "~": "7", "Z": "2"}
@@ -147,10 +149,12 @@ def clean(block, end_matter, drop=None):
 
 
 def parse(path, max_n, end_matter=None, drop=None, body=None):
-    """Returns {first number: (text, last number, closed)}.
+    """Returns {first number: (text, last number, closed, first line, last line)}.
 
     `closed` is True when the next block's mark was also read, so the text cannot run on
-    into a paragraph whose own number was lost.
+    into a paragraph whose own number was lost. The two line numbers are the block's
+    place in the scan's `_djvu.txt`, which is what lets `pages.py` say which printed
+    page it was read from.
 
     `body` is a regex for the book's own first sentence. Both the 1819 and 1824 printings
     open with a numbered synopsis of the whole work before the text proper, and a scan's
@@ -182,7 +186,7 @@ def parse(path, max_n, end_matter=None, drop=None, body=None):
         n, to = min(nums), max(nums)
         closed = i + 1 < len(hit) and hit[i + 1][1][0] - max(nums) <= 12
         if n not in secs or (closed and not secs[n][2]):
-            secs[n] = (text, to, closed)
+            secs[n] = (text, to, closed, ln, stop - 1)
     return secs
 
 
@@ -318,7 +322,7 @@ OVERVIEW_STOP = re.compile(r"^\s*(?:Einleitung|Vorrede|Anhang|Inhalt|Register|"
 
 
 def overview_entries(path, max_n, body=None, end_matter=None, drop=None):
-    """Ordered entries of a printed contents list: [{line, printed, readings, text}].
+    """Ordered entries of a printed contents list: [{line, end, printed, readings, text}].
 
     The list ends at the next section heading (`Einleitung` in the 1819 printing), so
     the book's footnotes and the bookseller's advertisements cannot become entries.
@@ -345,7 +349,7 @@ def overview_entries(path, max_n, body=None, end_matter=None, drop=None):
     for k, (i, got, line) in enumerate(marks):
         stop = marks[k + 1][0] if k + 1 < len(marks) else len(lines)
         block = "\n".join(lines[i + 1:stop])
-        out.append({"line": i, "printed": line.strip(),
+        out.append({"line": i, "end": stop - 1, "printed": line.strip(),
                     "readings": [{"numbers": list(n), "open_start": a, "open_end": b,
                                   "rest": r} for n, a, b, r in got],
                     "text": clean(got[0][3] + "\n" + block, end_matter, drop)})
@@ -584,6 +588,7 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
     the figure the reader shows covers the text it ships.
     """
     corpus, per_scan, scan_meta_list, seen = set(), {}, [], {}
+    locators, spans = {}, {}
     for src in sources:
         path = os.path.join(os.environ.get("ORGANON_SRC", "."), src["path"])
         if not os.path.exists(path):
@@ -591,6 +596,7 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
             continue
         blob = open(path, "rb").read()
         text = blob.decode("utf-8", "replace")
+        locators[src["label"]], spans[src["label"]] = locate(path, text)
         flat = re.sub(r"\s+", " ", text).upper()
         for word in src.get("refuse", ()):  # the edition guard
             if word in flat:
@@ -600,6 +606,7 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
                 raise SystemExit(f"refusing {src['label']}: does not declare {word}")
         secs = (parse(path, max_n, src.get("end_matter"), src.get("drop"), src.get("body"))
                 if src.get("parse", True) else {})
+        spans[src["label"]] = {n: got[3:] for n, got in secs.items()}
         if not secs:
             print(f"  scan {src['label']:22s}   no marks readable — corpus only")
         per_scan[src["label"]] = secs
@@ -615,7 +622,7 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
     merged, origin, printed_to = {}, {}, {}
     for closed_only in (True, False):
         for lab, secs in per_scan.items():
-            for n, (text, to, closed) in secs.items():
+            for n, (text, to, closed, _from, _to) in secs.items():
                 if n in merged or (closed_only and not closed):
                     continue
                 merged[n] = text
@@ -630,17 +637,81 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
             raise SystemExit(f"text_fix looks for {as_read!r} in §{n}, which does not read so")
         merged[n] = merged[n].replace(as_read, as_printed, 1)
 
+    places = {}
+    for n in merged:
+        loc, span = locators.get(origin[n]), spans.get(origin[n], {}).get(n)
+        if loc is not None and span:
+            places[n] = place(loc, span[0], span[1])
     return _finish(merged, origin, to_of, {}, corpus, max_n, out_js, out_json, global_name,
             {"title": title, "edition": edition, "translator": translator,
              "language": language,
              "source": source_url or "https://archive.org/details/" + sources[0]["ident"]},
             comment, confidence_note, floor, notes, generator, extras, scan_meta_list,
-            range_conflicts=conflicts)
+            range_conflicts=conflicts, places=places,
+            page_meta=page_meta(locators, places, merged))
+
+
+def locate(path, text):
+    """The scan's leaf map, and where in the text each block sits, or (None, {}).
+
+    `_djvu.xml` is not committed with the OCR, so a build without it simply records no
+    page: nothing is inferred from the line's position in an unbroken stream. The leaf
+    map is only believed where it lands on the same first line as the xml's own leaf.
+    """
+    xml = re.sub(r"\.txt$", ".xml", path)
+    if not os.path.exists(xml):
+        print(f"  !! {os.path.basename(xml)} not present — no printed page will be recorded")
+        return None, {}
+    lines = text.splitlines()
+    loc = pages.Locator(xml, lines)
+    agree = loc.agree(lines)
+    boundaries = sum(1 for i in range(1, len(loc.leaf)) if loc.leaf[i] != loc.leaf[i - 1])
+    print(f"  leaves {loc.leaves:3d} | page numbers read {sum(p is not None for p in loc.printed):3d}"
+          f" | line map agrees on {agree} of {boundaries} boundaries")
+    return loc, {}
+
+
+def place(loc, first, last):
+    """A block's place: the leaves it runs over and the pages they print."""
+    leaf, leaf_to, page, page_to = loc.span(first, last)
+    if leaf is None:
+        return {}
+    out = {}
+    if page is not None:
+        out["page"] = page
+        # an end page is only worth recording when the page it ends is one we can read;
+        # a lone `page_to` would claim a range whose start is unknown
+        if page_to is not None:
+            out["page_to"] = page_to
+    out["leaf"] = leaf
+    if leaf_to is not None:
+        out["leaf_to"] = leaf_to
+    return out
+
+
+def page_meta(locators, places, merged):
+    """What the pages can and cannot say, for `meta.pages`."""
+    if not locators:
+        return None
+    by = {}
+    for label, loc in locators.items():
+        if loc is None:
+            continue
+        by[label] = {"leaves": loc.leaves,
+                     "page_numbers_read": sum(p is not None for p in loc.printed),
+                     "leaves_without_a_page_number": [i + 1 for i, p in enumerate(loc.printed)
+                                                      if p is None]}
+    if not by:
+        return None
+    return {"method": ("each leaf's own printed page number, read from the top or foot of the "
+                        "leaf in the scan's _djvu.xml; leaf is the 1-based leaf of that scan"),
+            "by_scan": by,
+            "blocks_without_a_page": sorted(n for n in merged if "page" not in places.get(n, {}))}
 
 
 def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, global_name,
             head, comment, confidence_note, floor, notes, generator, extras, scans,
-            range_conflicts=()):
+            range_conflicts=(), places=None, page_meta=None):
     """Verify every block against the scans, name the gaps, write the bundle."""
     verify, refused = {}, []
     for n in list(merged):
@@ -679,6 +750,8 @@ def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, globa
     # the cut belongs with the verification figures it explains, ahead of the scans
     if range_conflicts:
         meta["range_conflicts"] = list(range_conflicts)
+    if page_meta:
+        meta["pages"] = page_meta
     meta["scans"] = scans
     meta["notes"] = list(notes)
     for key, value in extras:
@@ -686,7 +759,9 @@ def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, globa
     sections = []
     for n in sorted(merged):
         row = {"n": n, "to": to_of[n], "text": merged[n], "notes": [],
-               "from": origin[n], "corroboration": verify[n], "accepted": True}
+               "from": origin[n]}
+        row.update((places or {}).get(n, {}))
+        row.update({"corroboration": verify[n], "accepted": True})
         row.update(extra.get(n, {}))
         sections.append(row)
     size = write_bundle(out_js, out_json, meta, sections, global_name, comment)
@@ -699,19 +774,25 @@ def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, globa
 
 
 def build_from(out_js, out_json, global_name, max_n, blocks, scans, corpus, head,
-               comment, confidence_note, notes, floor=0.60, generator="tools/", extras=()):
+               comment, confidence_note, notes, floor=0.60, generator="tools/", extras=(),
+               locators=None):
     """Assemble a bundle from blocks already read, numbered and named.
 
-    `blocks` is [{n, to, text, from, extra}] in printed order; `scans` the metadata of
-    the copies read; `corpus` the 12-letter sequences of those copies.
+    `blocks` is [{n, to, text, from, line, end, extra}] in printed order; `scans` the
+    metadata of the copies read; `corpus` the 12-letter sequences of those copies;
+    `locators` the leaf map of each copy, keyed by the label the block was read from.
     """
-    merged, origin, to_of, extra = {}, {}, {}, {}
+    merged, origin, to_of, extra, places = {}, {}, {}, {}, {}
     for b in blocks:
         merged[b["n"]] = b["text"]
         origin[b["n"]] = b["from"]
         to_of[b["n"]] = b["to"]
+        loc = (locators or {}).get(b["from"])
+        if loc is not None and "line" in b:
+            places[b["n"]] = place(loc, b["line"], b.get("end", b["line"]))
         if b.get("extra"):
             extra[b["n"]] = b["extra"]
     return _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json,
                    global_name, head, comment, confidence_note, floor, notes, generator,
-                   extras, scans)
+                   extras, scans, places=places,
+                   page_meta=page_meta(locators or {}, places, merged))

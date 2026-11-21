@@ -15,6 +15,8 @@ that same scan carries, so a lost mark leaves a named gap instead of merging par
 """
 import hashlib, json, os, re, statistics
 
+import scanlib
+
 MAX = 292                      # the fourth edition has 292 aphorisms
 FLOOR = 0.60
 SRC_DIR = os.environ.get("ORGANON_SRC", ".")
@@ -144,6 +146,11 @@ def body_start(lines):
 
 
 def parse(path):
+    """Each section as `(text, closed, first line, last line)`.
+
+    The two line numbers are its place in the scan's `_djvu.txt`, which is how its
+    printed page is found.
+    """
     lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
     start = body_start(lines)
     hits = [h for h in marks(lines) if h[0] >= start]
@@ -162,7 +169,7 @@ def parse(path):
             continue
         nxt = best[i + 1][1] if i + 1 < len(best) else None
         if n not in secs or (nxt == n + 1 and not secs[n][1]):
-            secs[n] = (text, nxt == n + 1)
+            secs[n] = (text, nxt == n + 1, ln, stop - 1)
     return secs
 
 
@@ -172,6 +179,7 @@ def letters(s):
 
 def main():
     per_scan, scan_meta, corpus = {}, [], set()
+    locators, places_by_label = {}, {}
     for ident, rel, label in SCANS:
         path = os.path.join(SRC_DIR, rel)
         if not os.path.exists(path):
@@ -187,6 +195,10 @@ def main():
             print(f"  scan {label:22s}   marks unreadable — corpus only")
             secs = {}
         per_scan[label] = secs
+        locator, _ = scanlib.locate(path, text)
+        locators[label] = locator
+        places_by_label[label] = ({n: scanlib.place(locator, got[2], got[3])
+                                   for n, got in secs.items()} if locator is not None else {})
         flat = letters(text)
         corpus.update(flat[i:i + 12] for i in range(0, max(0, len(flat) - 12)))
         scan_meta.append({"label": label, "identifier": ident, "role": "scan",
@@ -204,7 +216,7 @@ def main():
         g = [flat[i:i + 12] for i in range(0, max(0, len(flat) - 12))]
         return (sum(1 for x in g if x in corpus) / len(g)) if g else 0.0
 
-    merged, origin, verify = {}, {}, {}
+    merged, origin, verify, places = {}, {}, {}, {}
     for closed_only in (True, False):
         for n in range(1, MAX + 1):
             if n in merged:
@@ -217,6 +229,7 @@ def main():
                     continue
                 merged[n] = got[0]
                 origin[n] = lab
+                places[n] = places_by_label.get(lab, {}).get(n, {})
                 break
 
     refused = []
@@ -227,6 +240,7 @@ def main():
             refused.append({"n": n, "corroboration": c})
             del merged[n]
             del origin[n]
+            places.pop(n, None)
 
     missing = [n for n in range(1, MAX + 1) if n not in merged]
     cov = [verify[n] for n in merged]
@@ -250,6 +264,7 @@ def main():
             "note": "No transcription of this translation exists, so the check is scan against "
                     "scan: it catches OCR damage, not a wrong edition.",
         },
+        "pages": scanlib.page_meta(locators, places, merged),
         "scans": scan_meta,
         "notes": [
             "The fourth edition is the first to carry Hahnemann's chronic-miasms theory; it "
@@ -263,8 +278,9 @@ def main():
         ],
     }
     bundle = {"meta": meta, "sections": [
-        {"n": n, "text": merged[n], "notes": [], "from": origin[n],
-         "corroboration": verify[n], "accepted": True} for n in sorted(merged)]}
+        dict({"n": n, "text": merged[n], "notes": [], "from": origin[n]},
+             **places.get(n, {}),
+             **{"corroboration": verify[n], "accepted": True}) for n in sorted(merged)]}
 
     body = json.dumps(bundle, ensure_ascii=False, separators=(",", ":"))
     js = ("/* The fourth edition, Devrient's 1833 English translation, read from scans of the\n"

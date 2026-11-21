@@ -22,7 +22,7 @@ const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
 const FILE = path.join(ROOT, "data", "fingerprints.json");
-const FORMAT = 1;
+const FORMAT = 2;
 
 const BUNDLES = [
   ["sixth", "docs/organon-data.js"],
@@ -51,6 +51,10 @@ function canonical(s) {
     s.n,
     s.to == null ? s.n : s.to,
     s.from || null,
+    s.page == null ? null : s.page,
+    s.page_to == null ? null : s.page_to,
+    s.leaf == null ? null : s.leaf,
+    s.leaf_to == null ? null : s.leaf_to,
     s.corroboration == null ? null : s.corroboration,
     s.text,
     s.notes || [],
@@ -119,7 +123,7 @@ function main(argv) {
     const note = at === -1 ? null : argv[at + 1];
     const bundles = compute();
     const out = { format: FORMAT, algorithm: "sha256",
-      covers: "every carried block's number, printed range end, source label, corroboration, text, printed notes and machine flag, in bundle order",
+      covers: "every carried block's number, printed range end, source label, printed page and scan leaf, corroboration, text, printed notes and machine flag, in bundle order",
       note: note || null, bundles };
     fs.mkdirSync(path.dirname(FILE), { recursive: true });
     fs.writeFileSync(FILE, JSON.stringify(out, null, 2) + "\n");

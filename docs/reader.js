@@ -27,6 +27,10 @@
       return { n: s.n, to: (s.to == null ? s.n : s.to), text: s.text, from: s.from || null,
                mt: !!s.mt,
                notes: s.notes || [],
+               page: (s.page == null ? null : s.page),
+               page_to: (s.page_to == null ? null : s.page_to),
+               leaf: (s.leaf == null ? null : s.leaf),
+               leaf_to: (s.leaf_to == null ? null : s.leaf_to),
                corroboration: (s.corroboration == null ? null : s.corroboration),
                diffWords: (s.diffWords == null ? null : s.diffWords),
                hay: norm(s.text + " " + (s.notes || []).join(" ")) };
@@ -139,6 +143,18 @@
     var src = scans.filter(function (s) { return s.label === row.from; })[0];
     var kind = (src && src.role === "transcription") || /^MediT/.test(row.from)
       ? "transcription" : "scan";
+    /* The page the block was read from, where the scan's own leaf prints one. A leaf
+     * whose page number could not be read records no page, so nothing is printed: the
+     * sentence never fills a gap with the position of the block in the stream. */
+    var place = "";
+    if (row.page != null && kind === "scan") {
+      place = " (printed page " + row.page + (row.page_to != null ? "\u2013" + row.page_to : "") +
+        (row.leaf != null ? ", leaf " + row.leaf + (row.leaf_to != null ? "\u2013" + row.leaf_to : "") : "") +
+        ")";
+    } else if (row.leaf != null && kind === "scan") {
+      place = " (leaf " + row.leaf + (row.leaf_to != null ? "\u2013" + row.leaf_to : "") +
+        "; its page number could not be read)";
+    }
     var tail = "";
     if (row.corroboration != null) {
       tail = " \u00b7 corroborated against " +
@@ -146,7 +162,7 @@
         " scans of the same printing (" + Math.round(row.corroboration * 100) +
         "% of its word-runs found verbatim)";
     }
-    return "text from the " + row.from + " " + kind + tail;
+    return "text from the " + row.from + " " + kind + place + tail;
   }
 
   /* ---------- the map of numbered paragraphs across the books ---------- */

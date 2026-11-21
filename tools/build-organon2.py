@@ -99,22 +99,24 @@ def read_copy(src, corpus):
         if word not in flat:
             raise SystemExit(f"refusing {src['label']}: does not declare {word}")
     entries = scanlib.overview_entries(path, MAX, src.get("body"), END_MATTER, DROP)
+    locator, _ = scanlib.locate(path, text)
     corpus.update(scanlib.grams(text))
     evidence = scanlib.evidence_line(flat, src.get("require", ()))
     meta = scanlib.scan_meta(src["ident"], src["label"], blob, text, evidence,
                              src["edition"], role=src["role"], sections=len(entries))
     print(f"  scan {src['label']:22s} {len(entries):3d} entries readable")
-    return entries, meta
+    return entries, meta, locator
 
 
 def main():
     corpus, scans = set(), []
-    entries_by_label = {}
+    entries_by_label, locators = {}, {}
     for src in SOURCES:
-        entries, meta = read_copy(src, corpus)
+        entries, meta, locator = read_copy(src, corpus)
         if entries is None:
             continue
         entries_by_label[src["label"]] = entries
+        locators[src["label"]] = locator
         scans.append(meta)
     known = scanlib.bundle_numbers(FRENCH)
     for entries in entries_by_label.values():
@@ -143,7 +145,7 @@ def main():
         if e["restored"]:
             extra["numbers_from"] = e["restored"]
         blocks.append({"n": n, "to": to, "text": e["text"], "from": "Hahnemann-1819-BN",
-                       "extra": extra})
+                       "line": e["line"], "end": e.get("end", e["line"]), "extra": extra})
 
     meta, sections = scanlib.build_from(
         out_js="docs/organon2-data.js", out_json="organon2-sections.json",
@@ -166,7 +168,8 @@ def main():
         notes=NOTES, floor=FLOOR, generator="tools/build-organon2.py",
         extras=(("machine_translation", None),
                 ("english_translation_exists", False),
-                ("numbered_from_second_copy", borrowed)))
+                ("numbered_from_second_copy", borrowed)),
+        locators=locators)
     print("  note: no English translation of this edition exists (see data/README.md)")
 
 

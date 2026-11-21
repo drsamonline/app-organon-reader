@@ -71,7 +71,7 @@ SHA-256 of every OCR file used, and the edition evidence line, are recorded in
     python3 tools/parse-homeoint.py   # -> homeoint_sections.json (291, sixth edition only)
     python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 77 assertions
+    node test-node.js                 # the suite: 83 assertions
     node tools/fingerprint.js check    # the carried text still matches data/fingerprints.json
 
 **The fingerprint gate.** The OCR is not committed, so nothing here can rebuild a book and
@@ -214,8 +214,10 @@ not separated here; the bundle carries the running text, and the reader says so.
 
 ### Rebuilding these two
 
-The OCR files are not committed (they are 400–600 KB each). Fetch them from the Internet
-Archive items named above, name them as the scripts expect, and:
+The OCR files are not committed (they are 400–600 KB each). Fetch them — and each item's
+`_djvu.xml` beside its `_djvu.txt`, which is where the printed page numbers are read from —
+from the Internet Archive items named above, name them as the scripts expect (`wheeler.txt`
+with `wheeler.xml`, and so on), and:
 
     ORGANON_SRC=. python3 tools/build-organon1.py   # -> docs/organon1-data.js
     ORGANON_SRC=. python3 tools/build-organon4.py   # -> docs/organon4-data.js
@@ -348,14 +350,75 @@ The French build runs first: `tools/build-organon2.py` corroborates the restored
 against the paragraph numbers in `docs/organon2-fr-data.js`, and if that bundle is not there
 it restores no end from a neighbouring entry — the uncorroborated ends stay named gaps.
 
-With those six files in place, the three builds reproduce the committed bundles byte for byte:
-`docs/organon2-fr-data.js` 448177 bytes, sha256 `ca19a6e2d8b8daf365eef66a0d5623de9d4527365d780fc2bb34d0bd4453f711`;
-`docs/organon2-data.js` 40862 bytes, sha256 `258ba0840f167ac51f0f1f9c35ea9843524d91a043e8474df23e43f59002d80e`;
-`docs/organon3-data.js` 349892 bytes, sha256 `36d2f0704ac17cefb9d246a1213d08470305133d09ad4efdddd7f51f6f54c7ac`.
-A rebuild that disagrees therefore means the OCR files or the code have moved, not that the
-page was read differently; nothing is overwritten on that evidence alone. The order of the
-keys inside `meta` is part of the record: the 1824 bundle's `range_conflicts` sits between
-`verification` and `scans`, and `tools/scanlib.py` writes it there.
+The printed page of every block is read from each scan's `_djvu.xml`, which is fetched from
+the same item as the text (`<id>_djvu.xml`). With the six text files and those xml files in
+place, the three builds reproduce the committed bundles byte for byte:
+`docs/organon2-fr-data.js` 459811 bytes, sha256 `122e93b34a0df3c18517cb8a43be36c2185e6548c2d052959538bbf2f17d8b68`;
+`docs/organon2-data.js` 45602 bytes, sha256 `3808368c17be51adb8e263998b7c92875c0e830fc4371aa78b68997bac5b7e48`;
+`docs/organon3-data.js` 361222 bytes, sha256 `2c4b6e199194af1e26d7acaf8162e8806313737742e0b81c6e845ad207d7d0e9`.
+A rebuild that disagrees therefore means the OCR files, the xml files or the code have moved,
+not that the page was read differently; nothing is overwritten on that evidence alone.
+Without the xml the text would come out the same but no page could be recorded, so the file
+differs: the page is part of the record. The order of the keys inside `meta` is part of the
+record too: the 1824 bundle's `range_conflicts` sits between `verification` and `pages`, and
+`tools/scanlib.py` writes it there.
+
+## The printed page each block came from, added 2026-11-21
+
+Five bundles are cut out of scans — the first (Wheeler), the second (Hahnemann's
+Inhaltsanzeige and Brunnow's French), the third and the fourth. Each block already carried
+the *scan* its words came from (`from: "Hahnemann-1824-BN"`), but not where in that scan it
+sits, so "traceable" stopped at the volume. Every carried block of those five now records
+its place on the paper:
+
+| field | meaning |
+|---|---|
+| `page` | the page number that leaf itself prints |
+| `page_to` | the last page the block's text runs over, when it runs over more than one |
+| `leaf` | the leaf of that scan, 1-based, in the order the scan reads |
+| `leaf_to` | the last leaf, when the block runs over more than one |
+
+The sixth and fifth editions record none: their text is a transcription, not a leaf, so
+there is no page to point at and nothing is claimed.
+
+**How a leaf is found.** A scan's `_djvu.txt` is one unbroken stream of lines: it carries no
+page breaks, so position in the file is not position in the book. The same scan's
+`_djvu.xml` has one `<OBJECT>` per leaf. The two are the same OCR of the same leaves, so a
+line's leaf is found by matching the running length of the two texts — a line belongs to the
+leaf that is still being read where it begins. The build prints how the map lands, e.g.
+`line map agrees on 313 of 313 boundaries` for the 1824 reading copy: every leaf starts on
+the line the xml gives as that leaf's first.
+
+**How a page number is believed.** The folio is printed at the top of the leaf (`31`,
+`RATIONAL ART OF HEALING 25`), and OCR mangles it too: the 1819 reading copy prints
+`2<i J` for 24, `2f` for 25, `$0` for 20. So a number is not read on its own. The book
+numbers its pages consecutively, so a leaf's number must be the number a leaf within two of
+it implies: `tools/pages.py` records a folio only where a neighbouring leaf prints the
+number that difference predicts, and only where it continues the numbers already read.
+A leaf whose number no neighbour confirms is **unreadable**: it gets no page, rather than
+one that merely looks plausible.
+
+**What the OCR leaves unreadable.**
+
+| bundle | blocks with a page | blocks without |
+|---|---|---|
+| first (Wheeler 1913) | 196 | 60 |
+| second (1819 Inhaltsanzeige) | 22 | 76 |
+| second (Brunnow's French) | 248 | 66 |
+| third (1824) | 267 | 30 |
+| fourth (Devrient 1833) | 175 | 66 |
+
+The 1819 reading copy is the worst of them: only 62 of its 394 leaves print a number legible
+enough to be confirmed by a neighbour, so 76 of that bundle's 98 blocks carry a leaf but no
+page. Nothing is filled in from the second copy's pagination, and nothing from where the
+block stands in the stream. Where the marks themselves were destroyed the page goes with
+them.
+
+Every unreadable leaf is named in `meta.pages.by_scan[label].leaves_without_a_page_number`,
+and `meta.pages.blocks_without_a_page` lists the blocks that carry no page. The reader
+prints the place under each section — *text from the Hahnemann-1824-BN scan (printed page 84,
+leaf 114) · corroborated …* — and where the leaf prints no readable number it says
+*leaf 118–119; its page number could not be read* instead.
 
 ## The machine translations — generated text, quarantined
 

@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.6.12 — 2026-11-21
+
+**Every carried block now records the printed page it was read from.**
+
+- **Provenance stopped at the volume.** Each block of the five scan-derived bundles (first,
+  second, second in French, third, fourth) named the scan it came from but not where in it,
+  so a reader could reach the scan and no further. A scan's `_djvu.txt` has no page breaks;
+  its `_djvu.xml` has one `<OBJECT>` per leaf. The new `tools/pages.py` maps each line of the
+  text to its leaf by matching the running length of the two (the 1824 reading copy lands
+  313 of 313 leaf boundaries on that leaf's own first line) and reads the page number the
+  leaf prints (`31`, `RATIONAL ART OF HEALING 25`).
+- **A page is recorded only where its neighbours confirm it.** OCR mangles folios as badly as
+  it mangles marks — the 1819 reading copy prints `2<i J` for 24, `2f` for 25, `$0` for 20 —
+  so a number counts only where another leaf within two prints the number that difference
+  predicts and it continues the numbers already read. Anything else is unreadable and gets
+  no page. Blocks now carry `page` and `leaf` (plus `page_to`/`leaf_to` when they run over
+  more than one), and `meta.pages` names every unreadable leaf and every block left without
+  a page.
+- **What is still unreadable is reported, not filled.** Blocks with a printed page: first
+  196 of 256, second 22 of 98, French 248 of 314, third 267 of 297, fourth 175 of 241. The
+  1819 Inhaltsanzeige is the worst: only 62 of its 394 leaves print a number a neighbour
+  confirms, so 76 of its 98 blocks carry a leaf and no page. Nothing is taken from the second
+  copy's pagination or from where a block stands in the stream.
+- **The reader prints it**: *text from the Hahnemann-1824-BN scan (printed page 84, leaf 114)
+  · corroborated …*, and says so where the leaf prints no readable number. A block records
+  an end page only when the page it begins on is readable too: a lone `page_to` would claim a
+  range whose start is unknown. The sixth and fifth editions record no page: a transcription
+  is not a leaf.
+- **Fingerprints cover the new fields** (format 2, re-recorded with that note): the carried
+  text is unchanged, and the suite is now **83 assertions** (was 77), checking that every
+  block's page is either printed by its leaf or named, never invented.
+
 ## 1.6.11 — 2026-11-21
 
 **The three scan builds are byte-for-byte reproducible.**

@@ -15,6 +15,8 @@ carries, so a lost mark never lets one aphorism run into the next.
 """
 import hashlib, json, os, re, statistics
 
+import scanlib
+
 MAX = 271                      # the first edition has 271 aphorisms
 FLOOR = 0.60
 SRC_DIR = os.environ.get("ORGANON_SRC", ".")
@@ -124,7 +126,11 @@ def clean(block):
 
 def parse(path):
     """Returns (sections read from a mark, §1 implied by position). §1 is used only when
-    another scan actually reads its number; the primary copy prints no §1 mark."""
+    another scan actually reads its number; the primary copy prints no §1 mark.
+
+    Each section is `(text, closed, first line, last line)`; the two line numbers are its
+    place in the scan's `_djvu.txt`, which is how its printed page is found.
+    """
     lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
     start = body_start(lines)
     hits = [h for h in marks(lines, allow_inline=True) if h[0] >= start]
@@ -132,12 +138,14 @@ def parse(path):
     implied = None
     if hit and hit[0][1] == 2:
         block = lines[start + 1:hit[0][0]]
+        first_line = start + 1
         while block and (not block[0].strip() or
                          sum(c.isupper() for c in block[0]) > sum(c.islower() for c in block[0])):
             block.pop(0)                      # the heading, broken over two lines
+            first_line += 1
         text = clean("\n".join(block))
         if len(text) >= 40:
-            implied = (text, True)
+            implied = (text, True, min(first_line, len(lines) - 1), hit[0][0] - 1)
     secs = {}
     for i, (ln, n, rest) in enumerate(hit):
         stop = hit[i + 1][0] if i + 1 < len(hit) else len(lines)
@@ -147,7 +155,7 @@ def parse(path):
         if not text:
             continue
         if n not in secs or (nxt == n + 1 and not secs[n][1]):
-            secs[n] = (text, nxt == n + 1)
+            secs[n] = (text, nxt == n + 1, ln, stop - 1)
     return secs, implied
 
 
@@ -157,6 +165,7 @@ def letters(s):
 
 def main():
     per_scan, implied_first, scan_meta, corpus = {}, {}, [], set()
+    locators, places_by_label = {}, {}
     for ident, rel, label in SCANS:
         path = os.path.join(SRC_DIR, rel)
         if not os.path.exists(path):
@@ -169,6 +178,12 @@ def main():
         per_scan[label] = secs
         if implied:
             implied_first[label] = implied
+        locator, _ = scanlib.locate(path, text)
+        locators[label] = locator
+        places = {n: scanlib.place(locator, got[2], got[3]) for n, got in secs.items()}
+        if implied and locator is not None:
+            places[1] = scanlib.place(locator, implied[2], implied[3])
+        places_by_label[label] = places
         flat = letters(text)
         corpus.update(flat[i:i + 12] for i in range(0, max(0, len(flat) - 12)))
         scan_meta.append({"label": label, "identifier": ident, "role": "scan",
@@ -186,7 +201,7 @@ def main():
     marked = set()
     for secs in per_scan.values():
         marked.update(secs)
-    merged, origin, verify = {}, {}, {}
+    merged, origin, verify, places = {}, {}, {}, {}
     # a section is taken from a scan that both reads its mark and reads the next one,
     # so no aphorism can carry the beginning of its neighbour; then any readable text;
     # and §1 may come from its position when another scan reads its number
@@ -204,6 +219,7 @@ def main():
                     continue
                 merged[n] = got[0]
                 origin[n] = lab
+                places[n] = places_by_label.get(lab, {}).get(n, {})
                 break
 
     # §1 has no mark of its own in the primary copy; where it is printed as the first
@@ -213,6 +229,7 @@ def main():
     if 1 in marked and primary_label in implied_first and 1 not in per_scan.get(primary_label, {}):
         merged[1] = implied_first[primary_label][0]
         origin[1] = primary_label
+        places[1] = places_by_label.get(primary_label, {}).get(1, {})
 
     refused = []
     for n in list(merged):
@@ -222,6 +239,7 @@ def main():
             refused.append({"n": n, "corroboration": c})
             del merged[n]
             del origin[n]
+            places.pop(n, None)
 
     missing = [n for n in range(1, MAX + 1) if n not in merged]
     cov = list(verify[n] for n in merged)
@@ -245,6 +263,7 @@ def main():
             "note": "This edition has no transcription to check against, so the check is "
                     "scan against scan; it catches OCR damage, not a wrong edition.",
         },
+        "pages": scanlib.page_meta(locators, places, merged),
         "scans": scan_meta,
         "notes": [
             "The first edition is the only English translation of 1810: C. E. Wheeler's, "
@@ -255,8 +274,9 @@ def main():
         ],
     }
     bundle = {"meta": meta, "sections": [
-        {"n": n, "text": merged[n], "notes": [], "from": origin[n],
-         "corroboration": verify[n], "accepted": True} for n in sorted(merged)]}
+        dict({"n": n, "text": merged[n], "notes": [], "from": origin[n]},
+             **places.get(n, {}),
+             **{"corroboration": verify[n], "accepted": True}) for n in sorted(merged)]}
 
     body = json.dumps(bundle, ensure_ascii=False, separators=(",", ":"))
     js = ("/* The first edition, Wheeler's 1913 English translation, read from scans of the\n"
