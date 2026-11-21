@@ -675,11 +675,12 @@ def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, globa
             "sections_checked": len(cov), "floor": floor, "refused": refused,
             "note": confidence_note,
         },
-        "scans": scans,
-        "notes": list(notes),
     })
+    # the cut belongs with the verification figures it explains, ahead of the scans
     if range_conflicts:
         meta["range_conflicts"] = list(range_conflicts)
+    meta["scans"] = scans
+    meta["notes"] = list(notes)
     for key, value in extras:
         meta[key] = value
     sections = []
