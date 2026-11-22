@@ -421,6 +421,31 @@ The 1819 reading copy is the worst of them: only 78 of its 394 leaves print a nu
 rules can settle, so 63 of that bundle's 98 blocks carry a leaf but no page. Where the marks
 themselves were destroyed the page goes with them.
 
+**What the 194 blocks without a page are waiting on.** The 194 are not one problem but five,
+and each waits on a different kind of evidence from outside the scans read so far. None of
+them would be settled by loosening the rule in `tools/pages.py`: every group either has no
+number on the leaf at all, or one the rule is right to refuse.
+
+| what the block's leaf prints | blocks | where | evidence that would settle it |
+|---|---|---|---|
+| nothing, and no other leaf of the block prints a page | 109 | first 24, second 44, French 7, third 24, fourth 10 | a copy of the same printing that prints this leaf's folio, or a better scan of this one — the page has to come off the leaf's own head, and this scan has lost it |
+| nothing, but a later leaf of the block prints a page | 44 | first 13, second 4, French 11, third 2, fourth 14 | the same, for the block's **first** leaf only: the end page is already read, so one legible folio at the opening closes the range |
+| a number past the last leaf of the copy | 12 | first 11, fourth 1 | a copy that prints the folio where this one prints a plate or price number: the number is not a page at all (first: `246` on leaf 136 of a 152-leaf copy, §246) |
+| a number that would run the book backwards | 13 | first 9, fourth 4 | a copy printing a number consistent with the run already read on both sides of the leaf (first: leaf 47 prints `18` where the nearest page believed before it is larger), or a collation showing that leaf is bound out of place |
+| a real folio the rule refuses for want of a witness | 16 | second 15, third 1 | one witness within six leaves, or an anchor on each side, for a number already printed: second leaves 32–33 print `23` with no neighbour to confirm it; third §156's `1` is the same |
+
+That makes 109 + 44 + 12 + 13 + 16 = 194, the same total as the column in the table above.
+The second bundle's 63 are 44 of the first group, 4 of the second and 15 of the last: it is
+the copy that lost the most, and the one whose pair cannot borrow. Its 1819 pair stands at
+`compared: 0`: no block falls on a leaf whose folio either copy reads, so the two cannot be
+shown to paginate alike, and the 63 stay named rather than filled. To become alike that pair needs at least **eight** blocks that both copies carry and
+read a page for, agreeing on the page — the BN copy settles 78 of its 394 leaves and the BSB
+copy 26, and the two sets do not meet on any block. A third scan of the 1819 printing, or any
+copy that kept a folio where both of these lost it, is what would settle them; only then
+could the surviving readings in one copy fill the other's gaps. The first bundle's 57 are in
+the same position for a like reason: its pair is compared on three blocks, against the eight
+needed, so no page may cross copies there either.
+
 **The other copy of the printing may print the page this one lost.** Each of these
 printings was read from two copies. A block whose own leaf prints no readable folio takes
 the page the other copy prints on the same block — but only after the two copies have been
