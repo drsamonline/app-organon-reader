@@ -623,15 +623,27 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
         if secs:
             print(f"  scan {src['label']:22s} {len(secs):3d} blocks readable")
 
-    merged, origin, printed_to = {}, {}, {}
+    merged, origin, printed_to, duplicates = {}, {}, {}, []
     for closed_only in (True, False):
         for lab, secs in per_scan.items():
             for n, (text, to, closed, _from, _to) in secs.items():
                 if n in merged or (closed_only and not closed):
                     continue
+                # A copy can read one number as another and so offer a paragraph already
+                # carried under its own number: the 1833 Dublin scan reads `§XXIII` as
+                # `§XXVIII`. Carrying it would print the same paragraph twice, so the
+                # reading is refused and the number it would have filled stays a named
+                # gap; another copy that prints that paragraph under that number still
+                # supplies it.
+                twin = next((m for m in merged if alike(text, merged[m])), None)
+                if twin is not None:
+                    duplicates.append({"n": n, "from": lab, "duplicates": twin})
+                    continue
                 merged[n] = text
                 origin[n] = lab
                 printed_to[n] = to
+    if duplicates:
+        print("  duplicate readings refused:", duplicates)
     to_of, conflicts = resolve_ranges(merged, printed_to)
 
     for n, (as_read, as_printed) in (text_fix or {}).items():
@@ -888,8 +900,16 @@ def build_from(out_js, out_json, global_name, max_n, blocks, scans, corpus, head
     `places_by_label` and `texts_by_label` are every copy's blocks, so a block whose own
     leaf prints no folio can take the page the other copy of the printing prints.
     """
-    merged, origin, to_of, extra, places = {}, {}, {}, {}, {}
+    merged, origin, to_of, extra, places, duplicates = {}, {}, {}, {}, {}, []
     for b in blocks:
+        if b["n"] in merged:
+            continue
+        # a copy that lists the same rubric under two numbers would carry one paragraph
+        # twice; the second listing is refused and its number stays a named gap
+        twin = next((m for m in merged if alike(b["text"], merged[m])), None)
+        if twin is not None:
+            duplicates.append({"n": b["n"], "from": b["from"], "duplicates": twin})
+            continue
         merged[b["n"]] = b["text"]
         origin[b["n"]] = b["from"]
         to_of[b["n"]] = b["to"]
@@ -906,6 +926,8 @@ def build_from(out_js, out_json, global_name, max_n, blocks, scans, corpus, head
         texts_by_label = {}
         for b in blocks:
             texts_by_label.setdefault(b["from"], {})[b["n"]] = b["text"]
+    if duplicates:
+        print("  duplicate readings refused:", duplicates)
     places = {n: dict(places_by_label.get(origin[n], {}).get(n, {})) for n in merged}
     fills, cross = cross_copy(places_by_label, texts_by_label, origin)
     for n, fill in fills.items():
