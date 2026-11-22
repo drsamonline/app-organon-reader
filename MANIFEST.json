@@ -69,10 +69,10 @@
       "at": "2026-11-21T22:12:36Z"
     },
     "tools/fingerprint.js": {
-      "sha": "f17016e9ad669095d2602923b0ccd5f1deb3431f",
+      "sha": "776dae342d0ead47e03f071aad3d32e9c13a2244",
       "producer": "buff@39b7664",
       "class": "generated",
-      "at": "2026-11-21T19:32:19Z"
+      "at": "2026-11-22T04:30:27Z"
     },
     "scripts/badges.py": {
       "sha": "f43d0731d297eb40e031e7f22b2e73df57e7fabb",
@@ -81,5 +81,5 @@
       "at": "2026-11-20T16:06:10Z"
     }
   },
-  "updated": "2026-11-21T22:12:36Z"
+  "updated": "2026-11-22T04:30:27Z"
 }
