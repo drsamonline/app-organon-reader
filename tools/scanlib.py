@@ -588,7 +588,7 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
     the figure the reader shows covers the text it ships.
     """
     corpus, per_scan, scan_meta_list, seen = set(), {}, [], {}
-    locators, spans = {}, {}
+    locators, spans, places_by_label = {}, {}, {}
     for src in sources:
         path = os.path.join(os.environ.get("ORGANON_SRC", "."), src["path"])
         if not os.path.exists(path):
@@ -607,6 +607,10 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
         secs = (parse(path, max_n, src.get("end_matter"), src.get("drop"), src.get("body"))
                 if src.get("parse", True) else {})
         spans[src["label"]] = {n: got[3:] for n, got in secs.items()}
+        places_by_label[src["label"]] = (
+            {n: place(locators[src["label"]], a, b)
+             for n, (a, b) in spans[src["label"]].items()}
+            if locators[src["label"]] is not None else {})
         if not secs:
             print(f"  scan {src['label']:22s}   no marks readable — corpus only")
         per_scan[src["label"]] = secs
@@ -637,18 +641,19 @@ def build(out_js, out_json, global_name, max_n, sources, edition, title, transla
             raise SystemExit(f"text_fix looks for {as_read!r} in §{n}, which does not read so")
         merged[n] = merged[n].replace(as_read, as_printed, 1)
 
-    places = {}
-    for n in merged:
-        loc, span = locators.get(origin[n]), spans.get(origin[n], {}).get(n)
-        if loc is not None and span:
-            places[n] = place(loc, span[0], span[1])
+    texts = {lab: {n: got[0] for n, got in secs.items()}
+             for lab, secs in per_scan.items()}
+    places = {n: dict(places_by_label.get(origin[n], {}).get(n, {})) for n in merged}
+    fills, cross = cross_copy(places_by_label, texts, origin)
+    for n, fill in fills.items():
+        places[n].update(fill)
     return _finish(merged, origin, to_of, {}, corpus, max_n, out_js, out_json, global_name,
             {"title": title, "edition": edition, "translator": translator,
              "language": language,
              "source": source_url or "https://archive.org/details/" + sources[0]["ident"]},
             comment, confidence_note, floor, notes, generator, extras, scan_meta_list,
             range_conflicts=conflicts, places=places,
-            page_meta=page_meta(locators, places, merged))
+            page_meta=page_meta(locators, places, merged, cross=cross))
 
 
 def locate(path, text):
@@ -689,7 +694,103 @@ def place(loc, first, last):
     return out
 
 
-def page_meta(locators, places, merged):
+MIN_SHARED = 8          # agreeing blocks needed before two copies' pagination is proved
+
+
+def alike(a, b, take=160, need=0.60):
+    """True when two copies' readings are the same printed block.
+
+    Two scans of one page rarely read every word the same way, but they open the block
+    the same way. The comparison is therefore on the first ~160 letters, as overlapping
+    12-letter sequences: a block whose opening one copy misread as another paragraph's
+    (§XXIII read as §XXVIII) is not the same block, and its pages must not be compared.
+    """
+    ga = grams(a[:take])
+    if len(ga) < 4:
+        return False
+    return coverage(b[:take], set(ga)) >= need
+
+
+def cross_copy(places_by_label, texts_by_label, origin):
+    """Prove two scans of a printing paginate alike, then read the missing folios.
+
+    A block whose own leaf prints no readable page number is not left pageless if the
+    other scan of the *same printing* prints that block's page: the two are the same
+    paper, and the page runs on the same leaf. That borrow is only made on evidence:
+
+    * the two copies must compare on at least `MIN_SHARED` blocks they both carry and
+      whose openings agree (OCR reading the same paragraph), and agree on the page of
+      every one of them. One disagreement means the copies do not demonstrably paginate
+      alike, and nothing is borrowed from that pair;
+    * the borrowed page is taken only for a block both copies carry and whose opening
+      they agree on, so a block one scan mis-read as its neighbour cannot lend a page;
+    * if two copies offer different pages for the block, neither is used.
+
+    Returns `(fills, report)`: `fills` is `{number: {page, page_from}}` for blocks whose
+    page came from another copy; the report is what the bundle records under
+    `meta.pages.cross_copy`, including every comparison and every refusal by name.
+    """
+    labels = [lab for lab, places in places_by_label.items() if places]
+    pages = {lab: {n: p["page"] for n, p in places_by_label[lab].items()
+                   if p.get("page") is not None} for lab in labels}
+    texts = {lab: texts_by_label.get(lab, {}) for lab in labels}
+    pairs, proven = [], set()
+    for i, a in enumerate(labels):
+        for b in labels[i + 1:]:
+            compared, dis, other_block = [], [], []
+            for n in sorted(set(pages[a]) & set(pages[b])):
+                if not alike(texts[a].get(n, ""), texts[b].get(n, "")):
+                    other_block.append(n)
+                    continue
+                compared.append(n)
+                if pages[a][n] != pages[b][n]:
+                    dis.append({"n": n, "pages": {a: pages[a][n], b: pages[b][n]}})
+            ok = len(compared) >= MIN_SHARED and not dis
+            if ok:
+                proven.add(frozenset((a, b)))
+            pairs.append({"copies": [a, b], "compared": len(compared),
+                          "agree": len(compared) - len(dis), "disagreements": dis,
+                          "not_the_same_block": other_block, "paginate_alike": ok})
+
+    fills, refused = {}, []
+    for n in sorted(origin):
+        own = places_by_label.get(origin[n], {}).get(n, {})
+        if own.get("page") is not None:
+            continue
+        offer = {}
+        for lab in labels:
+            if lab == origin[n] or n not in pages.get(lab, {}):
+                continue
+            if frozenset((origin[n], lab)) not in proven:
+                continue
+            if not alike(texts[origin[n]].get(n, ""), texts[lab].get(n, "")):
+                continue
+            offer[lab] = pages[lab][n]
+        if not offer:
+            continue
+        values = set(offer.values())
+        if len(values) != 1:
+            refused.append({"n": n, "pages": offer})
+            continue
+        page = values.pop()
+        # the copy the page is read from is named, and the name is deterministic
+        fills[n] = {"page": page, "page_from": sorted(offer)[0]}
+
+    report = {
+        "method": ("each copy's own folios first; a block whose own leaf prints no readable "
+                   "number takes the page the other copy of the same printing prints on the "
+                   "same block, and only where the copies agree on every block they both "
+                   "carry and can identify as the same"),
+        "minimum_shared_blocks": MIN_SHARED,
+        "pairs": pairs,
+        "filled_from_another_copy": [{"n": n, "page": f["page"], "from": f["page_from"]}
+                                     for n, f in sorted(fills.items())],
+        "refused": refused,
+    }
+    return fills, report
+
+
+def page_meta(locators, places, merged, cross=None):
     """What the pages can and cannot say, for `meta.pages`."""
     if not locators:
         return None
@@ -703,10 +804,13 @@ def page_meta(locators, places, merged):
                                                       if p is None]}
     if not by:
         return None
-    return {"method": ("each leaf's own printed page number, read from the top or foot of the "
+    out = {"method": ("each leaf's own printed page number, read from the top or foot of the "
                         "leaf in the scan's _djvu.xml; leaf is the 1-based leaf of that scan"),
             "by_scan": by,
             "blocks_without_a_page": sorted(n for n in merged if "page" not in places.get(n, {}))}
+    if cross:
+        out["cross_copy"] = cross
+    return out
 
 
 def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, global_name,
@@ -775,24 +879,38 @@ def _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json, globa
 
 def build_from(out_js, out_json, global_name, max_n, blocks, scans, corpus, head,
                comment, confidence_note, notes, floor=0.60, generator="tools/", extras=(),
-               locators=None):
+               locators=None, places_by_label=None, texts_by_label=None):
     """Assemble a bundle from blocks already read, numbered and named.
 
     `blocks` is [{n, to, text, from, line, end, extra}] in printed order; `scans` the
     metadata of the copies read; `corpus` the 12-letter sequences of those copies;
     `locators` the leaf map of each copy, keyed by the label the block was read from.
+    `places_by_label` and `texts_by_label` are every copy's blocks, so a block whose own
+    leaf prints no folio can take the page the other copy of the printing prints.
     """
     merged, origin, to_of, extra, places = {}, {}, {}, {}, {}
     for b in blocks:
         merged[b["n"]] = b["text"]
         origin[b["n"]] = b["from"]
         to_of[b["n"]] = b["to"]
-        loc = (locators or {}).get(b["from"])
-        if loc is not None and "line" in b:
-            places[b["n"]] = place(loc, b["line"], b.get("end", b["line"]))
         if b.get("extra"):
             extra[b["n"]] = b["extra"]
+    if places_by_label is None:
+        places_by_label = {}
+        for b in blocks:
+            loc = (locators or {}).get(b["from"])
+            if loc is not None and "line" in b:
+                places_by_label.setdefault(b["from"], {})[b["n"]] = place(
+                    loc, b["line"], b.get("end", b["line"]))
+    if texts_by_label is None:
+        texts_by_label = {}
+        for b in blocks:
+            texts_by_label.setdefault(b["from"], {})[b["n"]] = b["text"]
+    places = {n: dict(places_by_label.get(origin[n], {}).get(n, {})) for n in merged}
+    fills, cross = cross_copy(places_by_label, texts_by_label, origin)
+    for n, fill in fills.items():
+        places[n].update(fill)
     return _finish(merged, origin, to_of, extra, corpus, max_n, out_js, out_json,
                    global_name, head, comment, confidence_note, floor, notes, generator,
                    extras, scans, places=places,
-                   page_meta=page_meta(locators or {}, places, merged))
+                   page_meta=page_meta(locators or {}, places, merged, cross=cross))

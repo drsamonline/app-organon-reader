@@ -241,6 +241,16 @@ def main():
             del origin[n]
             places.pop(n, None)
 
+    # a block whose own leaf prints no folio may take the page the other copy of the
+    # printing prints, but only where the two copies are proved to paginate alike
+    texts_by_label = {lab: {n: got[0] for n, got in secs.items()}
+                      for lab, secs in per_scan.items()}
+    for lab, got in implied_first.items():
+        texts_by_label.setdefault(lab, {})[1] = got[0]
+    fills, cross = scanlib.cross_copy(places_by_label, texts_by_label, origin)
+    for n, fill in fills.items():
+        places.setdefault(n, {}).update(fill)
+
     missing = [n for n in range(1, MAX + 1) if n not in merged]
     cov = list(verify[n] for n in merged)
     meta = {
@@ -263,7 +273,7 @@ def main():
             "note": "This edition has no transcription to check against, so the check is "
                     "scan against scan; it catches OCR damage, not a wrong edition.",
         },
-        "pages": scanlib.page_meta(locators, places, merged),
+        "pages": scanlib.page_meta(locators, places, merged, cross=cross),
         "scans": scan_meta,
         "notes": [
             "The first edition is the only English translation of 1810: C. E. Wheeler's, "

@@ -227,6 +227,13 @@ def main():
                     continue
                 if closed_only and not got[1]:
                     continue
+                # A copy can read one Roman numeral as another and offer a paragraph
+                # already carried under its own number: the Dublin scan reads `§XXIII`
+                # as `§XXVIII`, so its "§28" opens with §23's words. Carrying it would
+                # put the same paragraph in the book twice; the block is refused and the
+                # other copy, which prints §28, supplies it.
+                if any(scanlib.alike(got[0], merged[m]) for m in merged):
+                    continue
                 merged[n] = got[0]
                 origin[n] = lab
                 places[n] = places_by_label.get(lab, {}).get(n, {})
@@ -241,6 +248,14 @@ def main():
             del merged[n]
             del origin[n]
             places.pop(n, None)
+
+    # a section whose own leaf prints no folio may take the page the other copy of the
+    # printing prints, but only where the two copies are proved to paginate alike
+    texts_by_label = {lab: {n: got[0] for n, got in secs.items()}
+                      for lab, secs in per_scan.items()}
+    fills, cross = scanlib.cross_copy(places_by_label, texts_by_label, origin)
+    for n, fill in fills.items():
+        places.setdefault(n, {}).update(fill)
 
     missing = [n for n in range(1, MAX + 1) if n not in merged]
     cov = [verify[n] for n in merged]
@@ -264,7 +279,7 @@ def main():
             "note": "No transcription of this translation exists, so the check is scan against "
                     "scan: it catches OCR damage, not a wrong edition.",
         },
-        "pages": scanlib.page_meta(locators, places, merged),
+        "pages": scanlib.page_meta(locators, places, merged, cross=cross),
         "scans": scan_meta,
         "notes": [
             "The fourth edition is the first to carry Hahnemann's chronic-miasms theory; it "

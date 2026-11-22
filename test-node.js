@@ -654,45 +654,138 @@ for (const [label, book] of [
  * The text of these five books was cut from scans, and the leaves of a scan print their
  * own page numbers. The build records the page and the leaf of the scan the text came
  * from; a leaf whose number could not be read records no page and is named in
- * meta.pages.blocks_without_a_page instead of being given a plausible number. This is
- * the check that the two agree, that no page exceeds the leaves the scan has, and that
- * a block's page never moves backwards inside one scan. */
+ * meta.pages.blocks_without_a_page instead of being given a plausible number. Where a
+ * block's own leaf prints no folio, the page may have been read from the other copy of
+ * the same printing, and then the block names that copy in `page_from`.
+ *
+ * This is the check that rows and meta agree, that a page never exceeds the leaves a
+ * copy has, that a page range cannot advance faster than the leaves it covers, that the
+ * pages run forward across the book, and that every borrowed page names the copy it came
+ * from and appears in meta.pages.cross_copy's list of fills. */
 function checkPages(label, book) {
   const meta = book.meta;
   assert.ok(meta.pages && meta.pages.by_scan, label + " records no page provenance");
   assert.ok(Array.isArray(meta.pages.blocks_without_a_page),
     label + " must name the blocks whose page could not be read");
+  const copies = Object.keys(meta.pages.by_scan);
+  const maxLeaves = Math.max(...copies.map(c => meta.pages.by_scan[c].leaves));
   const noPage = new Set(meta.pages.blocks_without_a_page);
-  let prev = {}, withPage = 0;
+  const cross = meta.pages.cross_copy;
+  const filled = new Map(((cross && cross.filled_from_another_copy) || []).map(f => [f.n, f]));
+  let prevPage = null, prevN = null, withPage = 0;
   for (const s of book.sections) {
     const scan = meta.pages.by_scan[s.from];
     assert.ok(scan, label + " §" + s.n + " comes from " + s.from + ", which has no leaf map");
     assert.ok(s.leaf != null && s.leaf >= 1 && s.leaf <= scan.leaves,
       label + " §" + s.n + " records leaf " + s.leaf + " of a scan with " + scan.leaves + " leaves");
+    /* an end without a beginning would claim a range whose start is unknown */
+    if (s.page_to != null) assert.ok(s.page != null,
+      label + " §" + s.n + " records an end page but no page where the block begins");
+    if (s.leaf_to != null) assert.ok(s.leaf != null,
+      label + " §" + s.n + " records an end leaf but no leaf where the block begins");
+    if (s.leaf_to != null) assert.ok(s.leaf_to >= s.leaf,
+      label + " §" + s.n + " ends on leaf " + s.leaf_to + " before it begins on " + s.leaf);
     if (s.page == null) {
       assert.ok(noPage.has(s.n),
         label + " §" + s.n + " has no page and is not named among the blocks without one");
       assert.ok(!/printed page/.test(R.provenance(s, meta)),
         label + " §" + s.n + " prints a page it does not have: " + R.provenance(s, meta));
-      continue;
+    } else {
+      withPage++;
+      assert.ok(s.page >= 1 && s.page <= maxLeaves,
+        label + " §" + s.n + " claims page " + s.page + " of a printing whose copies have at most " +
+        maxLeaves + " leaves");
+      if (s.page_to != null) {
+        assert.ok(s.page_to >= s.page,
+          label + " §" + s.n + " ends on page " + s.page_to + " before it begins on " + s.page);
+        /* one printed page per leaf: a page range may not run ahead of the leaves it covers */
+        assert.ok(s.leaf_to != null && s.page_to - s.page <= s.leaf_to - s.leaf,
+          label + " §" + s.n + " claims pages " + s.page + "–" + s.page_to + " over leaves " +
+          s.leaf + "–" + s.leaf_to + ", which cannot be one page per leaf");
+      }
+      if (prevPage != null) {
+        assert.ok(s.page >= prevPage,
+          label + " §" + s.n + " was read from page " + s.page + " after §" + prevN +
+          " on page " + prevPage + " of the same printing");
+      }
+      prevPage = s.page;
+      prevN = s.n;
+      assert.ok(!noPage.has(s.n),
+        label + " §" + s.n + " carries page " + s.page + " and is also listed as without one");
+      assert.ok(R.provenance(s, meta).includes("printed page " + s.page + (s.page_to == null ? "" : "–" + s.page_to)),
+        label + " §" + s.n + " must print the page it was read from: " + R.provenance(s, meta));
     }
-    withPage++;
-    assert.ok(s.page >= 1 && s.page <= scan.leaves,
-      label + " §" + s.n + " claims page " + s.page + " of a scan with " + scan.leaves + " leaves");
-    if (s.page_to != null) {
-      assert.ok(s.page_to >= s.page, label + " §" + s.n + " ends its page range before it begins");
+    /* a borrowed page names the other copy of the printing that printed it */
+    if (s.page_from != null) {
+      assert.ok(s.page != null, label + " §" + s.n + " names a copy but carries no page");
+      assert.notStrictEqual(s.page_from, s.from,
+        label + " §" + s.n + " says its page came from the copy its text came from");
+      assert.ok(copies.includes(s.page_from),
+        label + " §" + s.n + " names " + s.page_from + ", which has no leaf map");
+      const f = filled.get(s.n);
+      assert.ok(f && f.page === s.page && f.from === s.page_from,
+        label + " §" + s.n + " names " + s.page_from + " for page " + s.page +
+        " but is not recorded in cross_copy's fills");
+      assert.ok(R.provenance(s, meta).includes("; page read from " + s.page_from),
+        label + " §" + s.n + " must name the copy its page came from: " + R.provenance(s, meta));
+    } else {
+      assert.ok(!filled.has(s.n),
+        label + " §" + s.n + " is listed as filled from another copy but names no copy");
     }
-    if (prev[s.from] != null) {
-      assert.ok(s.page >= prev[s.from],
-        label + " §" + s.n + " was read from page " + s.page + " after §" + prev.n +
-        " on page " + prev[s.from] + " of the same scan");
-    }
-    prev = Object.assign({}, prev, { [s.from]: s.page, n: s.n });
-    assert.ok(R.provenance(s, meta).includes("printed page " + s.page + (s.page_to == null ? "" : "–" + s.page_to)),
-      label + " §" + s.n + " must print the page it was read from: " + R.provenance(s, meta));
   }
   assert.ok(withPage > 0, label + " records no page on any block");
 }
+
+/* ---------- two copies of one printing paginate alike, or nothing is borrowed ----------
+ * A block whose own leaf prints no folio can only take the page the other copy prints if
+ * the two copies are proved to be the same pagination: they must compare on at least the
+ * recorded minimum of blocks they both carry, agree on the page of every one, and agree
+ * that those blocks are the same block. The bundle says how many comparisons were made,
+ * names every disagreement and every block excluded as a different block, and fills
+ * nothing from a pair whose proof failed. */
+function checkCrossCopy(label, book) {
+  const pages = book.meta.pages;
+  assert.ok(pages && pages.cross_copy, label + " says nothing about cross-copy pagination");
+  const cc = pages.cross_copy;
+  assert.ok(Array.isArray(cc.pairs) && cc.pairs.length > 0, label + " made no copy comparison");
+  assert.ok(Array.isArray(cc.filled_from_another_copy), label + " must list the pages it borrowed");
+  const copies = Object.keys(pages.by_scan);
+  const proven = new Set();
+  for (const p of cc.pairs) {
+    assert.strictEqual(p.copies.length, 2, label + " compares " + JSON.stringify(p.copies));
+    for (const c of p.copies) assert.ok(copies.includes(c), label + " compares " + c + ", which has no leaf map");
+    assert.ok(p.compared >= 0 && p.agree >= 0, label + " has a negative comparison count");
+    assert.strictEqual(p.agree + p.disagreements.length, p.compared,
+      label + "'s pair " + p.copies.join(" / ") + " counts pages it does not explain");
+    assert.strictEqual(typeof p.paginate_alike, "boolean", label + " must say whether the copies paginate alike");
+    if (p.paginate_alike) {
+      assert.ok(p.compared >= cc.minimum_shared_blocks,
+        label + " proves pagination on only " + p.compared + " blocks");
+      assert.strictEqual(p.disagreements.length, 0,
+        label + " calls a pair alike that disagrees on " + JSON.stringify(p.disagreements));
+      proven.add(p.copies.slice().sort().join("|"));
+    } else {
+      assert.ok(p.disagreements.length > 0 || p.compared < cc.minimum_shared_blocks,
+        label + " calls a pair unlike without saying why");
+    }
+  }
+  const byN = new Map(book.sections.map(s => [s.n, s]));
+  for (const f of cc.filled_from_another_copy) {
+    const s = byN.get(f.n);
+    assert.ok(s, label + " records a borrowed page for §" + f.n + ", which it does not carry");
+    assert.strictEqual(s.page_from, f.from, label + " §" + f.n + " names a different copy than the record");
+    assert.strictEqual(s.page, f.page, label + " §" + f.n + " carries a different page than the record");
+  }
+  /* a page is only ever borrowed where both copies are proved to paginate alike */
+  for (const s of book.sections) {
+    if (s.page_from == null) continue;
+    const key = [s.from, s.page_from].sort().join("|");
+    assert.ok(proven.has(key),
+      label + " §" + s.n + " borrows a page from " + s.page_from +
+      " without a proven pagination comparison between them");
+  }
+}
+
 
 for (const [label, book] of [
   ["first", BOOK1], ["second", BOOK2], ["second (French)", BOOK2FR],
@@ -700,6 +793,8 @@ for (const [label, book] of [
 ]) {
   t("every section of the " + label + " bundle says which printed page it was read from", () =>
     checkPages(label, book));
+  t("the " + label + " bundle proves its copies paginate alike before borrowing a page", () =>
+    checkCrossCopy(label, book));
 }
 
 t("a transcription records no page, because its text was not cut from a leaf", () => {

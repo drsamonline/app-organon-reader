@@ -1,7 +1,7 @@
 <!-- badges:start -->
 <p align="center">
   <img src="docs/badges/live.svg" alt="live: online">
-  <img src="docs/badges/tests.svg" alt="tests: 81/83">
+  <img src="docs/badges/tests.svg" alt="tests: 86/88">
   <img src="docs/badges/offline.svg" alt="offline: 0 requests">
   <img src="docs/badges/deps.svg" alt="deps: 0">
   <img src="docs/badges/editions.svg" alt="editions: 6 editions">
@@ -65,7 +65,7 @@ Search is phrase search over the bundled text. Type `vital force` and every sect
 Open `docs/index.html` — that is the whole app. It works from `file://` and from GitHub Pages, because everything it needs sits beside it.
 
 ```
-node test-node.js        # the suite: 83 assertions, no dependencies
+node test-node.js        # the suite: 88 assertions, no dependencies
 python3 scripts/badges.py   # redraw the badges above, and the block in this file, from the books' own numbers
 node tools/fingerprint.js check   # the carried text still matches data/fingerprints.json
 ```

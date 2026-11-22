@@ -29,6 +29,7 @@
                notes: s.notes || [],
                page: (s.page == null ? null : s.page),
                page_to: (s.page_to == null ? null : s.page_to),
+               page_from: (s.page_from == null ? null : s.page_from),
                leaf: (s.leaf == null ? null : s.leaf),
                leaf_to: (s.leaf_to == null ? null : s.leaf_to),
                corroboration: (s.corroboration == null ? null : s.corroboration),
@@ -150,6 +151,9 @@
     if (row.page != null && kind === "scan") {
       place = " (printed page " + row.page + (row.page_to != null ? "\u2013" + row.page_to : "") +
         (row.leaf != null ? ", leaf " + row.leaf + (row.leaf_to != null ? "\u2013" + row.leaf_to : "") : "") +
+        /* the page may have been read from the other copy of the printing, where this
+         * block's own leaf prints no readable folio; that copy is named, not implied */
+        (row.page_from != null ? "; page read from " + row.page_from : "") +
         ")";
     } else if (row.leaf != null && kind === "scan") {
       place = " (leaf " + row.leaf + (row.leaf_to != null ? "\u2013" + row.leaf_to : "") +

@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.6.13 — 2026-11-21
+
+**The suite holds the page claims, and a folio one copy lost is read from the other copy of
+the printing — but only after the copies are proved to paginate alike.**
+
+- **Page invariants, and the defect they caught.** `node test-node.js` now checks, for all
+  five scan bundles, that an end page requires a start page, an end leaf requires a start
+  leaf, a page range cannot advance faster than the leaves it covers, pages run forward
+  across the whole printing, no page exceeds the leaves any copy has, and every borrowed page
+  names its copy and appears in `meta.pages.cross_copy`. The forward-run check failed on the
+  fourth bundle: the Dublin scan reads `§XXIII` as `§XXVIII`, so the bundle carried **§23's
+  text twice**, as §23 and §28, and §28's page (118) ran backwards from §26's (119). The
+  build now refuses a block whose opening duplicates a paragraph already carried; §28 comes
+  from the Wellcome copy, which prints it (*It is therefore fully proved…*, page 121). That
+  is the only carried text this change altered.
+- **Two copies of one printing compared before any page is borrowed.** A block whose own leaf
+  prints no readable folio takes the page the other copy prints on the same block, only where
+  both copies carry it, their openings agree, and the pair is proved alike: at least eight
+  agreeing comparisons and no disagreement. The bundle records every comparison, every
+  exclusion and every fill under `meta.pages.cross_copy`. French 207 compared / 207 agree /
+  48 borrowed, third 52 / 52 / 3, fourth 85 / 85 / 33. The two refusals are reported: the
+  Wellcome copy of Wheeler reads only eight marks, so that pair compares on three blocks
+  (below the eight needed); in the 1819 pair no block has a readable page in both copies, so
+  all 76 stay named gaps.
+- **Blocks with a printed page** (was, in 1.6.12: 196/22/248/267/175): first 196 of 256,
+  second 22 of 98, French 296 of 314, third 270 of 297, fourth 208 of 241. Blocks without a
+  page: 60, 76, 18, 27 and 33. The reader prints the borrowing copy — *printed page 61, leaf
+  97; page read from Hahnemann-1824-Google* — where the page came from the other scan.
+- **Fingerprints cover `page_from`** (format 3, re-recorded with that note); the suite is now
+  **88 assertions** (was 83). All five bundles rebuild byte for byte from a fresh OCR tree,
+  so the borrow is deterministic as well as evidenced.
+
 ## 1.6.12 — 2026-11-21
 
 **Every carried block now records the printed page it was read from.**

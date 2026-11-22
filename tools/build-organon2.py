@@ -128,6 +128,21 @@ def main():
         if others:
             scanlib.resolve_entries(entries, MAX, known=known, witness=others)
 
+    # every copy's place on the page, so a block whose own leaf prints no folio can take
+    # the page the other copy of the 1819 printing prints on the same block
+    places_by_label, texts_by_label = {}, {}
+    for lab, es in entries_by_label.items():
+        loc = locators.get(lab)
+        if loc is None:
+            continue
+        places_by_label[lab], texts_by_label[lab] = {}, {}
+        for e in es:
+            if not e["numbers"]:
+                continue
+            n = min(e["numbers"])
+            places_by_label[lab][n] = scanlib.place(loc, e["line"], e.get("end", e["line"]))
+            texts_by_label[lab][n] = e["text"]
+
     primary = (entries_by_label.get("Hahnemann-1819-BN")
                or next(iter(entries_by_label.values()), []))
     print(f"  french contents list: {len(known or ())} numbered paragraphs (corroboration)")
@@ -169,7 +184,8 @@ def main():
         extras=(("machine_translation", None),
                 ("english_translation_exists", False),
                 ("numbered_from_second_copy", borrowed)),
-        locators=locators)
+        locators=locators, places_by_label=places_by_label,
+        texts_by_label=texts_by_label)
     print("  note: no English translation of this edition exists (see data/README.md)")
 
 

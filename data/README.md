@@ -71,7 +71,7 @@ SHA-256 of every OCR file used, and the edition evidence line, are recorded in
     python3 tools/parse-homeoint.py   # -> homeoint_sections.json (291, sixth edition only)
     python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 83 assertions
+    node test-node.js                 # the suite: 88 assertions
     node tools/fingerprint.js check    # the carried text still matches data/fingerprints.json
 
 **The fingerprint gate.** The OCR is not committed, so nothing here can rebuild a book and
@@ -353,9 +353,9 @@ it restores no end from a neighbouring entry — the uncorroborated ends stay na
 The printed page of every block is read from each scan's `_djvu.xml`, which is fetched from
 the same item as the text (`<id>_djvu.xml`). With the six text files and those xml files in
 place, the three builds reproduce the committed bundles byte for byte:
-`docs/organon2-fr-data.js` 459811 bytes, sha256 `122e93b34a0df3c18517cb8a43be36c2185e6548c2d052959538bbf2f17d8b68`;
-`docs/organon2-data.js` 45602 bytes, sha256 `3808368c17be51adb8e263998b7c92875c0e830fc4371aa78b68997bac5b7e48`;
-`docs/organon3-data.js` 361222 bytes, sha256 `2c4b6e199194af1e26d7acaf8162e8806313737742e0b81c6e845ad207d7d0e9`.
+`docs/organon2-fr-data.js` 464657 bytes, sha256 `d7dd668ea6e5cc38699a4c2469177009c584965d60a2dce87bdedf081485167e`;
+`docs/organon2-data.js` 46098 bytes, sha256 `3da619b4daa095c4561eeee164f8eaac06eb9a740f3680245e88ad540ca30e67`;
+`docs/organon3-data.js` 362021 bytes, sha256 `86abf826b86d25fd5862da0abe1a002d15143a57d2712add6abe16c794868c47`.
 A rebuild that disagrees therefore means the OCR files, the xml files or the code have moved,
 not that the page was read differently; nothing is overwritten on that evidence alone.
 Without the xml the text would come out the same but no page could be recorded, so the file
@@ -377,6 +377,7 @@ its place on the paper:
 | `page_to` | the last page the block's text runs over, when it runs over more than one |
 | `leaf` | the leaf of that scan, 1-based, in the order the scan reads |
 | `leaf_to` | the last leaf, when the block runs over more than one |
+| `page_from` | the other copy of the printing that printed the page, where this block's own leaf prints none |
 
 The sixth and fifth editions record none: their text is a transcription, not a leaf, so
 there is no page to point at and nothing is claimed.
@@ -400,25 +401,66 @@ one that merely looks plausible.
 
 **What the OCR leaves unreadable.**
 
-| bundle | blocks with a page | blocks without |
-|---|---|---|
-| first (Wheeler 1913) | 196 | 60 |
-| second (1819 Inhaltsanzeige) | 22 | 76 |
-| second (Brunnow's French) | 248 | 66 |
-| third (1824) | 267 | 30 |
-| fourth (Devrient 1833) | 175 | 66 |
+| bundle | blocks with a page | borrowed from the other copy | blocks without |
+|---|---|---|---|
+| first (Wheeler 1913) | 196 | 0 | 60 |
+| second (1819 Inhaltsanzeige) | 22 | 0 | 76 |
+| second (Brunnow's French) | 296 | 48 | 18 |
+| third (1824) | 270 | 3 | 27 |
+| fourth (Devrient 1833) | 208 | 33 | 33 |
 
 The 1819 reading copy is the worst of them: only 62 of its 394 leaves print a number legible
 enough to be confirmed by a neighbour, so 76 of that bundle's 98 blocks carry a leaf but no
-page. Nothing is filled in from the second copy's pagination, and nothing from where the
-block stands in the stream. Where the marks themselves were destroyed the page goes with
-them.
+page. Where the marks themselves were destroyed the page goes with them.
+
+**The other copy of the printing may print the page this one lost.** Each of these
+printings was read from two copies. A block whose own leaf prints no readable folio takes
+the page the other copy prints on the same block — but only after the two copies have been
+*proved* to paginate alike, and only where both copies carry the block and their openings
+agree. A page would otherwise be inference from a leaf index, which is exactly what this
+record exists to avoid.
+
+The proof is in `meta.pages.cross_copy`, per pair of copies: how many blocks both copies
+carry and read a page for, how many agree, and every block excluded because the two readings
+are not the same paragraph. A pair is called alike only with at least eight agreeing
+comparisons and **no** disagreement. Where it is alike, every borrowed page is listed with
+the block, the page and the copy that printed it, and the block itself names that copy in
+`page_from`; the reader prints *printed page 61, leaf 97; page read from
+Hahnemann-1824-Google*.
+
+| printing | compared | agree | borrowed |
+|---|---|---|---|
+| first, Wheeler 1913 (Wheeler / Wellcome) | 3 | 3 | 0 — below the eight needed |
+| second, 1819 (BN / BSB) | 0 | 0 | 0 — no block has a readable page in both copies |
+| second, French 1824 (BN / Google) | 207 | 207 | 48 |
+| third, 1824 (BN / Google) | 52 | 52 | 3 |
+| fourth, 1833 (Dublin / Wellcome) | 85 | 85 | 33 |
+
+The two refusals are results, not omissions. The Wellcome copy of Wheeler's translation
+reads only eight section marks, so the copies can be compared on three blocks — too few to
+prove a pagination. In the 1819 pair, every block that has a readable page in one copy has an
+unreadable one in the other, so there is nothing to compare and the 76 gap stays named.
+
+**What the comparison also caught.** Two apparent disagreements were not pagination: the
+Wellcome copy reads §9 where the other copy's text is a Latin quotation (its own §9), and the
+Dublin copy reads `§XXIII` as `§XXVIII`. The second was a real defect this work surfaced: the
+fourth bundle carried the Dublin "§28" — which is §23's text — as §28, duplicating §23, and
+its page ran backwards. §28 now comes from the Wellcome copy, which prints it (`It is
+therefore fully proved…`, page 121), and a block whose opening duplicates an already-carried
+paragraph is refused by the build. That is the only carried text this change altered.
 
 Every unreadable leaf is named in `meta.pages.by_scan[label].leaves_without_a_page_number`,
 and `meta.pages.blocks_without_a_page` lists the blocks that carry no page. The reader
 prints the place under each section — *text from the Hahnemann-1824-BN scan (printed page 84,
 leaf 114) · corroborated …* — and where the leaf prints no readable number it says
 *leaf 118–119; its page number could not be read* instead.
+
+**What the suite holds.** The page claims are invariants in `node test-node.js`, not prose:
+an end page requires a start page, an end leaf requires a start leaf, a page range may not
+advance faster than the leaves it covers, pages must run forward across the whole printing,
+a page may not exceed the leaves any copy has, and every `page_from` must be a different copy,
+listed in `cross_copy.filled_from_another_copy` with the same page, and backed by a pair the
+build proved alike. A fill from an unproved pair fails the suite.
 
 ## The machine translations — generated text, quarantined
 
