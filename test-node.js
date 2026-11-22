@@ -1118,6 +1118,24 @@ t("scanlib cuts a range back for the block that prints the number, whichever sca
   }
 });
 
+t("the folio rules hold on leaves where the answer is known, refusals included", () => {
+  // the scans can show that a rule works on real leaves, but not what it refuses: a page
+  // no evidence supports never appears in the output. These leaves are synthetic, one
+  // page per leaf, so the expected answer is arithmetic and every refusal is a case.
+  const py = process.env.PYTHON || "python3";
+  let out;
+  try {
+    out = execFileSync(py, [path.join(__dirname, "tools/test-pages.py")],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (e) {
+    throw new Error("the folio rules could not be exercised with " + py + ": " +
+      String((e.stdout || "") + (e.stderr || "")).trim());
+  }
+  const passed = (out.match(/^PASS /gm) || []).length;
+  assert.strictEqual(passed, 9, "expected nine folio cases, got " + passed);
+  assert.ok(/all folio rules hold/.test(out), "the folio run must say it finished");
+});
+
 t("nothing is filled in from another edition: a number a book lacks is empty in its column", () => {
   // the fifth carries §292–§294 and the sixth does not; the first stops at §271
   assert.deepStrictEqual(MAP.rows[291].books.fifth, { start: 292, label: "\u00a7292" });

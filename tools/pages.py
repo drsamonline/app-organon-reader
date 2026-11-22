@@ -92,38 +92,111 @@ def folio_candidates(lines):
     return out
 
 
+NEAR = 2      # a leaf this close, printing the predicted number, is proof enough
+FAR = 6       # a leaf this far out must have a second one saying the same
+
+
 def read_folios(pages):
     """The printed page number of every leaf, or None where the leaf does not print one.
 
     The book numbers its pages one at a time, so a number a leaf prints must be the number
-    a leaf very near it implies: the difference between a leaf's index and the number it
+    a leaf near it implies: the difference between a leaf's index and the number it
     prints stays the same from leaf to leaf. One leaf's OCR can turn 22 into 23, which
     looks perfectly plausible on its own; but then it disagrees with the leaf beside it,
-    and that is what settles it. A number is therefore believed only where another leaf
-    within two of it prints the number that difference predicts — the two pages run on
-    from one another. A leaf whose number no neighbour confirms is left unreadable rather
-    than recorded because it looks reasonable.
+    and that is what settles it.
+
+    A number the leaf prints is believed on one of three proofs, and on nothing else:
+
+    * **a neighbour** within `NEAR` leaves prints the number that difference predicts —
+      the two pages run on from one another;
+    * **two neighbours** within `FAR` do, so a stretch of unreadable leaves between them
+      does not hide the numbering — one witness is not enough that far out, because a
+      single coincidental reading could stand alone;
+    * **a bracket**: a leaf prints the number its gap predicts, and on both sides of it
+      lies a leaf already believed on the same gap, with no leaf of a different gap
+      between them. The two anchors prove the numbering did not shift across the span,
+      so the page the leaf itself prints is the page it carries.
+
+    A thread that only reaches one way is *not* proof, however consistent: confirming a
+    leaf because the last anchor still fits it is reading the page off a leaf index,
+    which is the inference this record exists to avoid. Those leaves stay unreadable.
+
+    The wider proofs must also *fit the run already read*: the page has to be greater
+    than the nearest page believed before the leaf and smaller than the nearest one
+    believed after it. A scan that prints two incompatible numberings — the 1819 reading
+    copy prints 52-59 on one stretch of leaves and 41-55 on the next — would otherwise
+    let a bracket unseat pages that were already recorded. A page is added, never
+    withdrawn; where the two proofs disagree the leaf keeps the page it had.
 
     Finally the pages must run forward. A leaf whose number is not greater than the last
     one read cannot be showing its own page number, whatever else it might be.
     """
     cands = [folio_candidates(p) for p in pages]
-    out = []
+    total = len(pages)
+    out = [None] * total
+
+    def shows(j, gap):
+        return any(m - j == gap for m in cands[j])
+
+    def fits(i, n):
+        """True where this page sits inside the run the neighbours already prove."""
+        before = next((out[j] for j in range(i - 1, -1, -1) if out[j] is not None), None)
+        after = next((out[j] for j in range(i + 1, total) if out[j] is not None), None)
+        return (before is None or n > before) and (after is None or n < after)
+
+    # a neighbour within NEAR leaves: the page runs on from the one beside it
     for i, got in enumerate(cands):
-        want = None
         for n in dict.fromkeys(got):
             # a page number larger than the number of leaves is not this book's folio
             # (it is a date, a price or a plate's own number, read as a page)
-            if not 1 <= n <= len(pages):
+            if not 1 <= n <= total:
                 continue
             gap = n - i
-            for j in range(max(0, i - 2), min(len(cands), i + 3)):
-                if j != i and any(m - j == gap for m in cands[j]):
-                    want = n
-                    break
-            if want is not None:
+            if any(shows(j, gap) for j in range(max(0, i - NEAR),
+                                                min(total, i + NEAR + 1)) if j != i):
+                out[i] = n
                 break
-        out.append(want)
+
+    # two neighbours within FAR: a stretch of unreadable leaves does not hide the run
+    for i, got in enumerate(cands):
+        if out[i] is not None:
+            continue
+        for n in dict.fromkeys(got):
+            if not 1 <= n <= total:
+                continue
+            gap = n - i
+            far = [j for j in range(max(0, i - FAR), min(total, i + FAR + 1))
+                   if j != i and shows(j, gap)]
+            if len(far) >= 2 and fits(i, n):
+                out[i] = n
+                break
+
+    # a bracket: a believed anchor on both sides of the gap that agrees with this leaf
+    changed = True
+    while changed:
+        changed = False
+        for i, got in enumerate(cands):
+            if out[i] is not None:
+                continue
+            for n in dict.fromkeys(got):
+                if not 1 <= n <= total or not fits(i, n):
+                    continue
+                gap = n - i
+                left = next((j for j in range(i - 1, -1, -1)
+                             if out[j] is not None and out[j] - j == gap), None)
+                right = next((j for j in range(i + 1, total)
+                              if out[j] is not None and out[j] - j == gap), None)
+                if left is None or right is None:
+                    continue
+                # a believed leaf of another gap between the anchors means the leaf
+                # numbering shifted there, and the bracket spans two books
+                if any(out[j] is not None and out[j] - j != gap
+                       for j in range(left + 1, right)):
+                    continue
+                out[i] = n
+                changed = True
+                break
+
     last = None
     for i, n in enumerate(out):
         if n is None:

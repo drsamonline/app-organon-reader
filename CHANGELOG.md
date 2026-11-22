@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.6.14 — 2026-11-22
+
+**A leaf's page is confirmed by two witnesses within six leaves, or by anchors on both sides
+of the gap — and a page that would unseat the run already read is refused.**
+
+- **Two wider proofs, and the refusals that keep them honest.** 1.6.12–1.6.13 believed a
+  folio only where a neighbouring leaf (within two) printed the number the difference
+  predicted. `tools/pages.py` now also believes it where **two** leaves within six print
+  that number, or where a leaf already believed lies on **each side** of the gap with none
+  of a different numbering between them. A thread that reaches only one way is still
+  refused: confirming a leaf from the last anchor alone is reading the page off a leaf
+  index. Both wider proofs must also *fit the run already read* — greater than the nearest
+  page believed before the leaf, smaller than the nearest after — because the 1819 reading
+  copy prints two incompatible numberings (52–59 on one stretch of leaves, 41–55 on the
+  next, 56+ from leaf 66); without that guard a bracket confirmed leaf 49 as page 59 and
+  unseated the 57 and 58 already recorded at leaves 67–68. Pages are added, never
+  withdrawn.
+- **What the wider proofs found.** 20 blocks gain a printed page and none loses one: first
+  §184–§186 (page 79), second §22–§24, §28, §29, §31–§33 (page 18) and §49, §60, §61, §64,
+  §65 (page 21), fourth §121 (page 203, from its own leaf) and §173–§175 (page 231, borrowed
+  from the Wellcome copy). Blocks without a page fall from **214 to 194**: 60→57, 76→63, 18,
+  27, 33→29. Leaves that print a page rise where the rule widened — Wheeler 151→152, 1819
+  reading copy 62→78, 1819 second copy 22→26, 1824 Google copy 236→237, Devrient-Wellcome
+  260→263 — and no leaf loses the page it had. No carried text changed: the French and third
+  bundles rebuild byte for byte, and the fourth's Dublin/Wellcome pair now compares 87/87
+  (was 85/85) and borrows 36 pages (was 33).
+- **The refusals are tested, not just measured.** `tools/test-pages.py` runs the rules on
+  synthetic leaves, one page per leaf, where the answer is arithmetic: a lone witness four
+  leaves away is refused, two at six are accepted, a bracket is accepted, a single far
+  witness is refused, a page that runs the book backwards is refused, a number past the last
+  leaf is refused. The suite executes it, so it is now **89 assertions** (was 88).
+
 ## 1.6.13 — 2026-11-21
 
 **The suite holds the page claims, and a folio one copy lost is read from the other copy of

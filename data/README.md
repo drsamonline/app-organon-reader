@@ -71,7 +71,7 @@ SHA-256 of every OCR file used, and the edition evidence line, are recorded in
     python3 tools/parse-homeoint.py   # -> homeoint_sections.json (291, sixth edition only)
     python3 tools/extract.py          # -> sections.json (291 of 291, with corroboration)
     python3 tools/build-data.py       # -> docs/organon-data.js
-    node test-node.js                 # the suite: 88 assertions
+    node test-node.js                 # the suite: 89 assertions
     node tools/fingerprint.js check    # the carried text still matches data/fingerprints.json
 
 **The fingerprint gate.** The OCR is not committed, so nothing here can rebuild a book and
@@ -393,25 +393,33 @@ the line the xml gives as that leaf's first.
 **How a page number is believed.** The folio is printed at the top of the leaf (`31`,
 `RATIONAL ART OF HEALING 25`), and OCR mangles it too: the 1819 reading copy prints
 `2<i J` for 24, `2f` for 25, `$0` for 20. So a number is not read on its own. The book
-numbers its pages consecutively, so a leaf's number must be the number a leaf within two of
-it implies: `tools/pages.py` records a folio only where a neighbouring leaf prints the
-number that difference predicts, and only where it continues the numbers already read.
-A leaf whose number no neighbour confirms is **unreadable**: it gets no page, rather than
-one that merely looks plausible.
+numbers its pages consecutively, so a leaf's number must be the number its neighbours imply:
+`tools/pages.py` records a folio on one of three proofs, and on nothing else — a leaf within
+**two** of it prints the number that difference predicts; **two** leaves within **six** of it
+do; or a leaf already believed on the same numbering lies on each side of it, with no leaf of
+a different numbering between them. A page read on one of those proofs must also fall inside
+the run already read — greater than the nearest page believed before the leaf, smaller than
+the nearest after — so a scan that prints two incompatible numberings (the 1819 reading copy
+prints 52–59 on one stretch of leaves and 41–55 on the next) cannot unseat a page already
+recorded. This rule **adds** pages and never withdraws one. A thread that reaches only one way
+is not proof, however consistent: confirming a leaf from the last anchor alone is reading the
+page off a leaf index. A leaf whose number no proof settles is **unreadable**: it gets no page,
+rather than one that merely looks plausible. `tools/test-pages.py` executes these rules on
+synthetic leaves where the answer is arithmetic, refusals included; the suite runs it.
 
 **What the OCR leaves unreadable.**
 
 | bundle | blocks with a page | borrowed from the other copy | blocks without |
 |---|---|---|---|
-| first (Wheeler 1913) | 196 | 0 | 60 |
-| second (1819 Inhaltsanzeige) | 22 | 0 | 76 |
+| first (Wheeler 1913) | 199 | 0 | 57 |
+| second (1819 Inhaltsanzeige) | 35 | 0 | 63 |
 | second (Brunnow's French) | 296 | 48 | 18 |
 | third (1824) | 270 | 3 | 27 |
-| fourth (Devrient 1833) | 208 | 33 | 33 |
+| fourth (Devrient 1833) | 212 | 36 | 29 |
 
-The 1819 reading copy is the worst of them: only 62 of its 394 leaves print a number legible
-enough to be confirmed by a neighbour, so 76 of that bundle's 98 blocks carry a leaf but no
-page. Where the marks themselves were destroyed the page goes with them.
+The 1819 reading copy is the worst of them: only 78 of its 394 leaves print a number the
+rules can settle, so 63 of that bundle's 98 blocks carry a leaf but no page. Where the marks
+themselves were destroyed the page goes with them.
 
 **The other copy of the printing may print the page this one lost.** Each of these
 printings was read from two copies. A block whose own leaf prints no readable folio takes
@@ -434,12 +442,12 @@ Hahnemann-1824-Google*.
 | second, 1819 (BN / BSB) | 0 | 0 | 0 — no block has a readable page in both copies |
 | second, French 1824 (BN / Google) | 207 | 207 | 48 |
 | third, 1824 (BN / Google) | 52 | 52 | 3 |
-| fourth, 1833 (Dublin / Wellcome) | 85 | 85 | 33 |
+| fourth, 1833 (Dublin / Wellcome) | 87 | 87 | 36 |
 
 The two refusals are results, not omissions. The Wellcome copy of Wheeler's translation
 reads only eight section marks, so the copies can be compared on three blocks — too few to
 prove a pagination. In the 1819 pair, every block that has a readable page in one copy has an
-unreadable one in the other, so there is nothing to compare and the 76 gap stays named.
+unreadable one in the other, so there is nothing to compare and the 63 gap stays named.
 
 **What the comparison also caught.** Two apparent disagreements were not pagination: the
 Wellcome copy reads §9 where the other copy's text is a Latin quotation (its own §9), and the
