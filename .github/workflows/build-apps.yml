@@ -12,7 +12,7 @@ on:
 
 jobs:
   app:
-    uses: drsamonline/app-builder/.github/workflows/build.yml@49c2e0b172890f9334bbc7167a0e7fb5cd3756ba
+    uses: drsamonline/app-builder/.github/workflows/build.yml@a1dfa124cbc55390598295a0c8be54dae33696c0
     with:
       app_name: app-organon-reader
       app_src: docs
